@@ -123,5 +123,33 @@ check(awarded === C.BOND_XP.petCapPerDay, `petting caps at ${C.BOND_XP.petCapPer
 check(PPBond.claimPet(s5, '2026-07-26') !== null, 'petting cap resets on a new day');
 check(s5.bond.pets === 1, 'pet counter resets to 1 on the new day');
 
+// --- backfill replays the event log ---
+const history = [
+  { type: 'pet_chosen', species: 'fox', name: 'Pip' },
+  { type: 'puzzle_solved', kind: 'daily', slot: 0 },
+  { type: 'puzzle_solved', kind: 'daily', slot: 1 },
+  { type: 'puzzle_solved', kind: 'daily', slot: 2 },
+  { type: 'puzzle_solved', kind: 'free' },
+  { type: 'feed', item: 'berry' },
+  { type: 'feed', item: 'cake' },
+  { type: 'buy_permanent', item: 'ball' },
+  { type: 'energy_restore', via: 'coins' }
+];
+const expectedXp =
+  C.BOND_XP.dailySolve[0] + C.BOND_XP.dailySolve[1] + C.BOND_XP.dailySolve[2] +
+  C.BOND_XP.freeplaySolve + C.BOND_XP.feed.berry + C.BOND_XP.feed.cake;
+check(PPBond.backfill(history) === expectedXp, `backfill totals ${expectedXp}`);
+
+// Events that carry no bond value contribute nothing.
+check(PPBond.backfill([{ type: 'buy_permanent' }, { type: 'pet_renamed' }]) === 0,
+  'non-bond events contribute 0');
+
+// Defensive: a truncated or malformed log must not throw or produce NaN.
+check(PPBond.backfill([]) === 0, 'empty log is 0');
+check(PPBond.backfill(undefined) === 0, 'undefined log is 0');
+check(PPBond.backfill([{ type: 'puzzle_solved', kind: 'daily' }]) === 0,
+  'daily solve with no slot is 0, not NaN');
+check(PPBond.backfill([{ type: 'feed' }]) === 0, 'feed with no item is 0, not NaN');
+
 if (failures) { console.error(`${failures} failure(s)`); process.exit(1); }
 console.log('bond tests: all passed');

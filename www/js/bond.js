@@ -94,7 +94,26 @@
     return award(state, 'pet');
   }
 
-  const PPBond = { thresholdFor, levelFor, xpFor, blankBond, award, claimVisit, claimPet };
+  // Replays the append-only event log into an XP total, so an existing save
+  // arrives at a bond level that matches its history rather than starting over.
+  //
+  // Deliberately under-credits: the log is capped at 5000 entries and the daily
+  // set bonus was never logged as its own event. Under-crediting is the correct
+  // direction to fail — a player is never handed a level they didn't earn.
+  function backfill(events) {
+    let xp = 0;
+    (events || []).forEach(e => {
+      if (!e) return;
+      if (e.type === 'puzzle_solved') {
+        xp += e.kind === 'daily' ? xpFor('daily', { slot: e.slot }) : xpFor('freeplay');
+      } else if (e.type === 'feed') {
+        xp += xpFor('feed', { item: e.item });
+      }
+    });
+    return xp;
+  }
+
+  const PPBond = { thresholdFor, levelFor, xpFor, blankBond, award, claimVisit, claimPet, backfill };
   if (typeof module !== 'undefined' && module.exports) module.exports = PPBond;
   global.PPBond = PPBond;
 })(typeof window !== 'undefined' ? window : globalThis);
