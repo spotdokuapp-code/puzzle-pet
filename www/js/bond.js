@@ -16,7 +16,10 @@
     let xp = L[L.length - 1].xp;
     let step = L[L.length - 1].xp - L[L.length - 2].xp;
     for (let k = L.length + 1; k <= level; k++) {
-      step = Math.round(step * C().BOND_ENDLESS.stepGrowth);
+      // Clamp to a minimum of 1 so the sequence is always strictly increasing,
+      // even if a future stepGrowth tuning value would otherwise round step to 0
+      // (which would make levelFor's while-loop never terminate).
+      step = Math.max(1, Math.round(step * C().BOND_ENDLESS.stepGrowth));
       xp += step;
     }
     return xp;

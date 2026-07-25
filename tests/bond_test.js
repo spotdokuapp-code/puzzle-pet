@@ -60,5 +60,26 @@ check(PPBond.xpFor('nonsense') === 0, 'unknown source is 0, not NaN');
 check(PPBond.xpFor('feed', { item: 'nonsense' }) === 0, 'unknown feed item is 0, not NaN');
 check(PPBond.xpFor('daily', { slot: 99 }) === 0, 'out-of-range slot is 0, not undefined');
 
+// --- Endless-tail step is clamped to a minimum of 1, so thresholds stay
+// strictly increasing (and levelFor terminates) even for a stepGrowth value
+// low enough to otherwise round the step down to 0. ---
+(function checkEndlessStepFloor() {
+  const originalStepGrowth = C.BOND_ENDLESS.stepGrowth;
+  C.BOND_ENDLESS.stepGrowth = 0.1;
+  try {
+    let prevXp = PPBond.thresholdFor(C.BOND_LEVELS.length + 1);
+    for (let lv = C.BOND_LEVELS.length + 2; lv <= C.BOND_LEVELS.length + 20; lv++) {
+      const xp = PPBond.thresholdFor(lv);
+      check(xp > prevXp, `low-stepGrowth threshold still increases at level ${lv}`);
+      prevXp = xp;
+    }
+    const farXp = PPBond.thresholdFor(C.BOND_LEVELS.length + 20);
+    const result = PPBond.levelFor(farXp);
+    check(result.level === C.BOND_LEVELS.length + 20, 'levelFor terminates and returns correct level under low stepGrowth');
+  } finally {
+    C.BOND_ENDLESS.stepGrowth = originalStepGrowth;
+  }
+})();
+
 if (failures) { console.error(`${failures} failure(s)`); process.exit(1); }
 console.log('bond tests: all passed');
