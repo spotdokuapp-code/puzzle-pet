@@ -1,0 +1,8 @@
+{
+  "appId": "app.puzzlepet.game",
+  "appName": "Puzzle Pet",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "always"
+  }
+}

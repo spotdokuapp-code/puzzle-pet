@@ -1,0 +1,22 @@
+{
+  "name": "puzzle-pet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Puzzle Pet — cozy daily logic puzzles that care for a small creature. Working title.",
+  "scripts": {
+    "serve": "npx http-server www -p 8080 -c-1",
+    "test:gen": "node tests/generator_test.js",
+    "test:app": "npx playwright test tests/app_test.spec.js",
+    "ios:init": "npx cap add ios",
+    "ios:sync": "npx cap sync ios"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.0",
+    "http-server": "^14.1.1"
+  },
+  "dependencies": {
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0"
+  }
+}

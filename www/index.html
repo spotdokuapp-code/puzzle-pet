@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Puzzle Pet</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Onboarding -->
+  <section class="screen" id="screen-onboard">
+    <div class="topbar"><div class="title">Welcome! 🌱</div></div>
+    <div class="card">
+      <h2>Choose your pal</h2>
+      <p class="subtle">They'll cheer you on while you solve. You can rename them any time.</p>
+      <div class="species-grid" id="species-grid"></div>
+      <input class="name-input" id="pet-name-input" maxlength="14" placeholder="Name your pal">
+      <button class="primary-btn" id="onboard-go" disabled>Let's go!</button>
+    </div>
+  </section>
+
+  <!-- Home -->
+  <section class="screen" id="screen-home">
+    <div class="topbar">
+      <div class="title">Puzzle Pet</div>
+      <div class="chips">
+        <span class="chip" id="chip-streak">🔥 0</span>
+        <span class="chip" id="chip-coins">🪙 0</span>
+      </div>
+    </div>
+
+    <div class="card pet-card" id="home-pet-card">
+      <div class="sprite" id="home-pet-sprite"></div>
+      <div class="info">
+        <h2 id="home-pet-name">—</h2>
+        <div class="mood" id="home-pet-mood"></div>
+        <div class="energy-wrap">
+          <div class="energy-track"><div class="energy-fill" id="home-energy-fill"></div></div>
+          <div class="energy-label" id="home-energy-label"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 id="daily-title">Today's puzzles</h2>
+      <p class="subtle" id="daily-sub">Finish the first to keep your streak. Finish all three for the bonus!</p>
+      <div class="slots" id="daily-slots"></div>
+      <div class="set-bonus" id="set-bonus-line"></div>
+    </div>
+
+    <div class="nav-row">
+      <button class="nav-btn" id="btn-calendar"><span class="ico">📅</span>Calendar</button>
+      <button class="nav-btn" id="btn-pet"><span class="ico">🏠</span>Pet room</button>
+      <button class="nav-btn" id="btn-freeplay"><span class="ico">♾️</span>Free play</button>
+      <button class="nav-btn" id="btn-settings"><span class="ico">⚙️</span>Settings</button>
+    </div>
+  </section>
+
+  <!-- Game -->
+  <section class="screen" id="screen-game">
+    <div class="topbar">
+      <button class="back-btn" id="game-back">‹ Back</button>
+      <div class="chips"><span class="chip" id="game-energy">⚡ 100</span></div>
+    </div>
+    <div class="game-head">
+      <div>
+        <div class="game-title" id="game-title">Puzzle</div>
+        <div class="game-sub">One ★ per row, column & color — none touching</div>
+      </div>
+    </div>
+    <div id="board"></div>
+    <div class="game-tools">
+      <button class="tool-btn" id="btn-clear">Clear</button>
+      <button class="tool-btn" id="btn-hint">Hint 💡</button>
+    </div>
+  </section>
+
+  <!-- Calendar -->
+  <section class="screen" id="screen-calendar">
+    <div class="topbar">
+      <button class="back-btn" id="cal-back">‹ Home</button>
+      <div class="chips"><span class="chip" id="chip-streak-cal">🔥 0</span></div>
+    </div>
+    <div class="card">
+      <div class="cal-head">
+        <button id="cal-prev">‹</button>
+        <h2 id="cal-month">Month</h2>
+        <button id="cal-next">›</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <p class="subtle" style="margin-top:10px">Missed a day? Tap it to play it — it still counts and still pays. 💛</p>
+    </div>
+  </section>
+
+  <!-- Pet room -->
+  <section class="screen" id="screen-pet">
+    <div class="topbar">
+      <button class="back-btn" id="pet-back">‹ Home</button>
+      <div class="chips"><span class="chip" id="chip-coins-pet">🪙 0</span></div>
+    </div>
+    <div class="scene" id="scene">
+      <div class="speech" id="pet-speech"></div>
+      <div class="pet-sprite" id="pet-sprite"></div>
+    </div>
+    <div class="card">
+      <h2 id="pet-title">—</h2>
+      <div class="energy-wrap">
+        <div class="energy-track"><div class="energy-fill" id="pet-energy-fill"></div></div>
+        <div class="energy-label" id="pet-energy-label"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Snacks</h2>
+      <p class="subtle">Treats restore energy right away.</p>
+      <div class="item-row" id="consumables-row"></div>
+    </div>
+    <div class="card">
+      <h2>Room shop</h2>
+      <p class="subtle">Keepsakes stay in the room forever.</p>
+      <div class="item-row" id="permanents-row"></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Win overlay -->
+<div class="overlay" id="overlay-win">
+  <div class="modal">
+    <div class="big" id="win-emoji">🎉</div>
+    <h3 id="win-title">Solved!</h3>
+    <div class="coin-burst" id="win-coins">+10 🪙</div>
+    <p id="win-sub"></p>
+    <button class="primary-btn" id="win-continue">Continue</button>
+  </div>
+</div>
+
+<!-- Energy overlay -->
+<div class="overlay" id="overlay-energy">
+  <div class="modal">
+    <div class="big" id="energy-emoji">😴</div>
+    <h3 id="energy-title">Time for a rest</h3>
+    <p id="energy-sub">Your pal is out of energy. How about a pick-me-up?</p>
+    <div class="opt-col">
+      <button class="primary-btn" id="energy-ad">Watch a short ad 📺</button>
+      <button class="primary-btn" id="energy-snack" style="background:var(--good); box-shadow:0 3px 0 #649455">Share a snack · 25 🪙</button>
+      <button class="ghost-btn" id="energy-wait">They'll rest on their own ⏳</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ad stub overlay -->
+<div class="overlay" id="overlay-ad">
+  <div class="modal">
+    <div class="ad-stub-box" id="ad-box">Ad<small id="ad-note">dev stub — real SDK later</small></div>
+    <button class="primary-btn" id="ad-close" disabled>Close</button>
+  </div>
+</div>
+
+<!-- Settings overlay -->
+<div class="overlay" id="overlay-settings">
+  <div class="modal">
+    <h3>Settings</h3>
+    <div class="opt-col">
+      <button class="primary-btn" id="settings-removeads">Remove ads (coming soon)</button>
+      <button class="ghost-btn" id="settings-rename">Rename pal</button>
+      <button class="ghost-btn" id="settings-reset" style="color:var(--danger)">Start over (erase data)</button>
+      <button class="ghost-btn" id="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/generator.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/daily.js"></script>
+<script src="js/game.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
