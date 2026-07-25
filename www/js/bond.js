@@ -59,7 +59,42 @@
     }
   }
 
-  const PPBond = { thresholdFor, levelFor, xpFor };
+  function blankBond() {
+    return { xp: 0, level: 1, visitDay: null, pets: 0, petsDay: null };
+  }
+
+  // Adds XP and recomputes the level. Mutates state.bond; does not save.
+  // Returns the transition so callers can toast a level-up.
+  function award(state, source, opts) {
+    const gained = xpFor(source, opts);
+    const from = state.bond.level;
+    state.bond.xp += gained;
+    const to = levelFor(state.bond.xp).level;
+    state.bond.level = to;
+    return { gained, from, to };
+  }
+
+  // Once per calendar day. `today` is a 'YYYY-MM-DD' string — storing the day
+  // rather than a timestamp means no timers and no drift.
+  function claimVisit(state, today) {
+    if (state.bond.visitDay === today) return null;
+    state.bond.visitDay = today;
+    return award(state, 'visit');
+  }
+
+  // Capped per calendar day so petting can't be farmed, but always available
+  // for free — a player with no coins can still bond.
+  function claimPet(state, today) {
+    if (state.bond.petsDay !== today) {
+      state.bond.petsDay = today;
+      state.bond.pets = 0;
+    }
+    if (state.bond.pets >= C().BOND_XP.petCapPerDay) return null;
+    state.bond.pets++;
+    return award(state, 'pet');
+  }
+
+  const PPBond = { thresholdFor, levelFor, xpFor, blankBond, award, claimVisit, claimPet };
   if (typeof module !== 'undefined' && module.exports) module.exports = PPBond;
   global.PPBond = PPBond;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -81,5 +81,47 @@ check(PPBond.xpFor('daily', { slot: 99 }) === 0, 'out-of-range slot is 0, not un
   }
 })();
 
+// --- award() adds XP and reports the level transition ---
+function freshState() {
+  return { bond: PPBond.blankBond(), events: [] };
+}
+
+const s1 = freshState();
+const a1 = PPBond.award(s1, 'daily', { slot: 0 });
+check(a1.gained === C.BOND_XP.dailySolve[0], 'award returns gained xp');
+check(a1.from === 1 && a1.to === 1, 'small award does not level up');
+check(s1.bond.xp === C.BOND_XP.dailySolve[0], 'award mutates state xp');
+
+const s2 = freshState();
+s2.bond.xp = C.BOND_LEVELS[1].xp - 1;      // one XP short of level 2
+s2.bond.level = 1;
+const a2 = PPBond.award(s2, 'pet');
+check(a2.from === 1 && a2.to === 2, 'crossing a threshold reports from 1 to 2');
+check(s2.bond.level === 2, 'award updates state level');
+
+// --- award never decreases XP, whatever it is handed ---
+const s3 = freshState();
+s3.bond.xp = 100;
+PPBond.award(s3, 'nonsense');
+check(s3.bond.xp === 100, 'unknown source leaves xp unchanged, never negative');
+
+// --- claimVisit: once per day ---
+const s4 = freshState();
+const first = PPBond.claimVisit(s4, '2026-07-25');
+check(first && first.gained === C.BOND_XP.visit, 'first visit of the day awards');
+check(PPBond.claimVisit(s4, '2026-07-25') === null, 'second visit same day awards nothing');
+const nextDay = PPBond.claimVisit(s4, '2026-07-26');
+check(nextDay && nextDay.gained === C.BOND_XP.visit, 'visit awards again on a new day');
+
+// --- claimPet: capped per day, resets on a new day ---
+const s5 = freshState();
+let awarded = 0;
+for (let i = 0; i < C.BOND_XP.petCapPerDay + 3; i++) {
+  if (PPBond.claimPet(s5, '2026-07-25')) awarded++;
+}
+check(awarded === C.BOND_XP.petCapPerDay, `petting caps at ${C.BOND_XP.petCapPerDay}/day`);
+check(PPBond.claimPet(s5, '2026-07-26') !== null, 'petting cap resets on a new day');
+check(s5.bond.pets === 1, 'pet counter resets to 1 on the new day');
+
 if (failures) { console.error(`${failures} failure(s)`); process.exit(1); }
 console.log('bond tests: all passed');
