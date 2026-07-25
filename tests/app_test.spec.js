@@ -20,12 +20,30 @@ async function autosolve(page) {
 test('full core loop', async ({ page }) => {
   await page.goto('/');
 
-  // --- Onboarding ---
+  // --- Onboarding: welcome → meet → name → arrive ---
   await expect(page.locator('#screen-onboard')).toHaveClass(/active/);
+  await expect(page.locator('#onb-welcome')).toHaveClass(/active/);
+  await page.click('#onb-welcome-go');
+
+  // Tapping previews only; a separate button commits, because species is permanent.
+  await expect(page.locator('#onb-choose')).toHaveClass(/active/);
+  await expect(page.locator('#onb-choose-go')).toBeDisabled();
   await page.click('#species-fox');
+  await expect(page.locator('#onb-blurb')).not.toHaveText('');
+  await page.click('#species-cat');            // browsing is safe
+  await page.click('#species-fox');            // and reversible
+  await expect(page.locator('#onb-choose-go')).toBeEnabled();
+  await page.click('#onb-choose-go');
+
+  await expect(page.locator('#onb-name')).toHaveClass(/active/);
   await expect(page.locator('#pet-name-input')).toHaveValue('Maple');
   await page.fill('#pet-name-input', 'Pip');
-  await page.click('#onboard-go');
+  await page.click('#onb-name-go');
+
+  await expect(page.locator('#onb-arrive')).toHaveClass(/active/);
+  await expect(page.locator('#onb-speech')).toContainText('Pip');
+  await page.click('#onb-arrive-go');
+
   await expect(page.locator('#screen-home')).toHaveClass(/active/);
   await expect(page.locator('#home-pet-name')).toHaveText('Pip');
 
@@ -131,4 +149,96 @@ test('daily puzzles are deterministic for a given date', async ({ page }) => {
     return [JSON.stringify(p1), JSON.stringify(p2)];
   });
   expect(a).toBe(b);
+});
+
+test('bond rises from solving, petting, and visiting', async ({ page }) => {
+  await page.goto('/');
+
+  // Onboard quickly.
+  await page.click('#onb-welcome-go');
+  await page.click('#species-dino');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  // The daily visit is claimed once onboarding completes.
+  const afterVisit = await page.evaluate(() => window.PP.state().bond.xp);
+  expect(afterVisit).toBeGreaterThan(0);
+
+  // Solving the easy opener adds XP.
+  await page.click('#slot-0');
+  await autosolve(page);
+  await continueWin(page);
+  const afterSolve = await page.evaluate(() => window.PP.state().bond.xp);
+  expect(afterSolve).toBeGreaterThan(afterVisit);
+
+  // Petting is free but capped per day.
+  await page.click('#btn-pet');
+  await expect(page.locator('#pet-bond')).toBeVisible();
+  const cap = await page.evaluate(() => window.PPConfig.BOND_XP.petCapPerDay);
+  for (let i = 0; i < cap + 3; i++) await page.click('#pet-sprite');
+  const afterPets = await page.evaluate(() => window.PP.state().bond.xp);
+  const perPet = await page.evaluate(() => window.PPConfig.BOND_XP.pet);
+  expect(afterPets).toBe(afterSolve + cap * perPet);
+
+  // XP only ever goes up, and the meter reflects the level.
+  await page.evaluate(() => window.PP._grantXp(1000));
+  await page.click('#pet-back');
+  await page.click('#btn-pet');
+  const level = await page.evaluate(() => window.PP.state().bond.level);
+  expect(level).toBeGreaterThan(1);
+  await expect(page.locator('#bond-level')).toHaveText(`Lv ${level}`);
+});
+
+test('a v1 save migrates to v2 with a backfilled bond level', async ({ page }) => {
+  await page.goto('/');
+
+  // Seed a v1 save with real history, then reload so load() migrates it.
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('puzzlepet.v1', JSON.stringify({
+      version: 1,
+      createdDay: '2026-06-01',
+      coins: 137,
+      pet: { species: 'fox', name: 'Pip', energy: 80, energyTs: Date.now() },
+      lastActiveDay: '2026-06-20',
+      days: { '2026-06-20': { slots: [true, true, false], bonus: false } },
+      owned: { ball: true, plant: true },
+      solves: 4,
+      removeAds: false,
+      events: [
+        { type: 'pet_chosen', species: 'fox', name: 'Pip' },
+        { type: 'puzzle_solved', kind: 'daily', slot: 0 },
+        { type: 'puzzle_solved', kind: 'daily', slot: 1 },
+        { type: 'puzzle_solved', kind: 'daily', slot: 2 },
+        { type: 'feed', item: 'cake' }
+      ]
+    }));
+  });
+  await page.reload();
+
+  // Straight to home — a migrated player is never re-onboarded.
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);
+  await expect(page.locator('#home-pet-name')).toHaveText('Pip');
+
+  const s = await page.evaluate(() => window.PP.state());
+  expect(s.version).toBe(2);
+
+  // Backfill credited the logged solves and the feed.
+  const cfg = await page.evaluate(() => window.PPConfig.BOND_XP);
+  const backfilled = cfg.dailySolve[0] + cfg.dailySolve[1] + cfg.dailySolve[2] + cfg.feed.cake;
+  expect(s.bond.xp).toBeGreaterThanOrEqual(backfilled);   // plus today's visit
+  expect(s.bond.level).toBeGreaterThan(1);
+
+  // Nothing the player already had was disturbed.
+  expect(s.coins).toBe(137);
+  expect(s.owned.ball).toBe(true);
+  expect(s.owned.plant).toBe(true);
+  expect(s.days['2026-06-20'].slots).toEqual([true, true, false]);
+
+  // Migration runs exactly once — a reload must not re-award the backfill.
+  const xpAfterFirst = s.bond.xp;
+  await page.reload();
+  const xpAfterSecond = await page.evaluate(() => window.PP.state().bond.xp);
+  expect(xpAfterSecond).toBe(xpAfterFirst);
 });
