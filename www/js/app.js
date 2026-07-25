@@ -79,10 +79,22 @@
     return 'content';
   }
   function moodText() {
-    const m = mood();
-    if (m === 'missing') return `${S.pet.name} missed you — so glad you're back! ✨`;
-    if (m === 'happy') return `${S.pet.name} is having a great day!`;
-    return `${S.pet.name} is happily pottering about.`;
+    return PPSpeech.pick(speechCtx());
+  }
+  // Everything the speech pool needs to choose a line.
+  function speechCtx() {
+    const created = S.createdDay || PPStore.today();
+    const daysKnown = Math.max(0,
+      Math.round((new Date(PPStore.today()) - new Date(created)) / 86400000));
+    return {
+      name: S.pet.name,
+      mood: mood(),
+      level: S.bond.level,
+      streak: streak(),
+      hour: new Date().getHours(),
+      owned: Object.keys(S.owned).length,
+      daysKnown
+    };
   }
   function touch() {
     S.lastActiveDay = PPStore.today();
@@ -389,39 +401,64 @@
   $('btn-pet').addEventListener('click', () => { renderPet(); show('screen-pet'); });
   $('pet-back').addEventListener('click', () => { renderHome(); show('screen-home'); });
 
-  // ---------- onboarding / rename ----------
+  // ---------- onboarding: welcome → meet → name → arrive ----------
+  // Species is written once at the "meet" beat and never again. Tapping a
+  // creature only previews it; a separate button commits. That matters because
+  // the choice is permanent, so a mis-tap must never decide it.
   let selSpecies = null;
+
+  function onbStep(id) {
+    document.querySelectorAll('.onboard-step').forEach(s => s.classList.remove('active'));
+    $(id).classList.add('active');
+  }
+
   function renderOnboard() {
-    selSpecies = S.pet.species || null;
+    selSpecies = null;
     const grid = $('species-grid');
     grid.innerHTML = '';
     C.SPECIES.forEach(sp => {
       const b = document.createElement('button');
-      b.className = 'species-btn' + (sp === selSpecies ? ' sel' : '');
+      b.className = 'species-btn';
       b.id = `species-${sp}`;
       b.innerHTML = PPSprites.svg(sp, 'happy', 62) + `<span class="nm">${sp}</span>`;
       b.addEventListener('click', () => {
         selSpecies = sp;
         grid.querySelectorAll('.species-btn').forEach(x => x.classList.remove('sel'));
         b.classList.add('sel');
-        const inp = $('pet-name-input');
-        if (!inp.value.trim()) inp.value = C.DEFAULT_NAMES[sp];
-        $('onboard-go').disabled = false;
+        $('onb-preview').innerHTML = PPSprites.svg(sp, 'happy', 84);
+        $('onb-blurb').textContent = C.SPECIES_BLURBS[sp];
+        $('onb-choose-go').disabled = false;
       });
       grid.appendChild(b);
     });
-    $('pet-name-input').value = S.pet.name || '';
-    $('onboard-go').disabled = !selSpecies;
-    $('onboard-go').textContent = S.pet.species ? 'Save' : "Let's go!";
+    $('onb-preview').innerHTML = '';
+    $('onb-blurb').innerHTML = '&nbsp;';
+    $('onb-choose-go').disabled = true;
+    $('pet-name-input').value = '';
+    onbStep('onb-welcome');
   }
-  $('onboard-go').addEventListener('click', () => {
+
+  $('onb-welcome-go').addEventListener('click', () => onbStep('onb-choose'));
+
+  $('onb-choose-go').addEventListener('click', () => {
     if (!selSpecies) return;
-    const isNew = !S.pet.species;
+    $('onb-name-sprite').innerHTML = PPSprites.svg(selSpecies, 'happy', 84);
+    $('pet-name-input').value = C.DEFAULT_NAMES[selSpecies];
+    onbStep('onb-name');
+  });
+
+  $('onb-name-go').addEventListener('click', () => {
+    if (!selSpecies) return;
     S.pet.species = selSpecies;
     S.pet.name = ($('pet-name-input').value.trim() || C.DEFAULT_NAMES[selSpecies]).slice(0, 14);
     touch();
-    log(isNew ? 'pet_chosen' : 'pet_renamed', { species: selSpecies, name: S.pet.name });
-    if (isNew) toast(`${S.pet.name} can't wait to watch you solve! 💛`);
+    log('pet_chosen', { species: S.pet.species, name: S.pet.name });
+    $('onb-arrive-sprite').innerHTML = PPSprites.svg(S.pet.species, 'happy', 110);
+    $('onb-speech').textContent = PPSpeech.pick(speechCtx());
+    onbStep('onb-arrive');
+  });
+
+  $('onb-arrive-go').addEventListener('click', () => {
     renderHome();
     show('screen-home');
   });
