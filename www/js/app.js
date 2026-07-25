@@ -471,8 +471,19 @@
   });
   $('settings-rename').addEventListener('click', () => {
     overlay('overlay-settings', false);
-    renderOnboard();
-    show('screen-onboard');
+    $('rename-input').value = S.pet.name;
+    overlay('overlay-rename', true);
+  });
+  $('rename-cancel').addEventListener('click', () => overlay('overlay-rename', false));
+  $('rename-save').addEventListener('click', () => {
+    const next = ($('rename-input').value.trim() || S.pet.name).slice(0, 14);
+    S.pet.name = next;
+    touch();
+    log('pet_renamed', { name: next });
+    overlay('overlay-rename', false);
+    renderHome();
+    if ($('screen-pet').classList.contains('active')) renderPet();
+    toast(`Say hello to ${next}! 💛`);
   });
   let resetArmed = false;
   $('settings-reset').addEventListener('click', () => {
