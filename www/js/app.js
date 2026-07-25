@@ -96,6 +96,34 @@
       daysKnown
     };
   }
+  // Applies one bond award: persists, logs a level-up, pays the endless-tier
+  // coin gift, and toasts. Safe to call with null (a spent daily gate).
+  function applyBond(result) {
+    if (!result) return;
+    save();
+    if (result.to > result.from) {
+      const info = PPBond.levelFor(S.bond.xp);
+      log('bond_level', { level: result.to });
+      if (result.to > C.BOND_LEVELS.length) {
+        S.coins += C.BOND_ENDLESS.coinGift;
+        save();
+        toast(`Bond level ${result.to}! +${C.BOND_ENDLESS.coinGift} 🪙`);
+      } else {
+        toast(`${S.pet.name} — "${info.name}" 💛`);
+      }
+    }
+  }
+
+  // Once per calendar day, for a player who actually has a pet.
+  // Safe to call more than once per load — claimVisit itself is the gate.
+  function claimDailyVisit() {
+    if (!S.pet.species) return;
+    const visit = PPBond.claimVisit(S, PPStore.today());
+    if (!visit) return;
+    log('bond_visit', { xp: visit.gained });
+    applyBond(visit);
+  }
+
   function touch() {
     S.lastActiveDay = PPStore.today();
     save();
@@ -121,6 +149,7 @@
   function renderHome() {
     $('chip-coins').textContent = `🪙 ${S.coins}`;
     $('chip-streak').textContent = `🔥 ${streak()}`;
+    renderBond();
     $('home-pet-sprite').innerHTML = PPSprites.svg(S.pet.species, mood(), 72);
     $('home-pet-name').textContent = S.pet.name;
     $('home-pet-mood').textContent = moodText();
@@ -206,9 +235,11 @@
       if (!day.slots[gameCtx.slot]) {
         day.slots[gameCtx.slot] = true;
         earned += C.DAILY_PAYOUTS[gameCtx.slot];
+        applyBond(PPBond.award(S, 'daily', { slot: gameCtx.slot }));
         if (day.slots.every(Boolean) && !day.bonus) {
           day.bonus = true;
           earned += C.DAILY_SET_BONUS;
+          applyBond(PPBond.award(S, 'setBonus'));
           sub = `Whole set finished — +${C.DAILY_SET_BONUS} 🪙 bonus! ${S.pet.name} is thrilled.`;
         } else if (gameCtx.slot === 0) {
           sub = `Streak safe! ${S.pet.name}'s day is made. 💛`;
@@ -220,6 +251,7 @@
       });
     } else {
       earned = C.FREEPLAY_PAYOUT;
+      applyBond(PPBond.award(S, 'freeplay'));
       log('puzzle_solved', { kind: 'free', ms: result.ms, mistakes: result.mistakes, hints: result.hintsUsed, coins: earned });
     }
     S.coins += earned;
@@ -337,6 +369,14 @@
     rug:    'right:26%; bottom:6px;',
     poster: 'right:8%; top:12%;'
   };
+  function renderBond() {
+    const info = PPBond.levelFor(S.bond.xp);
+    $('chip-bond').textContent = `💛 ${info.level}`;
+    $('bond-name').textContent = info.name || `Level ${info.level}`;
+    $('bond-level').textContent = `Lv ${info.level}`;
+    $('bond-fill').style.width = `${Math.round(100 * info.into / info.needed)}%`;
+    $('bond-label').textContent = `${info.into} / ${info.needed} to the next level`;
+  }
   function renderPet(bounce) {
     $('chip-coins-pet').textContent = `🪙 ${S.coins}`;
     const scene = $('scene');
@@ -352,9 +392,14 @@
     });
     const spriteEl = $('pet-sprite');
     spriteEl.innerHTML = PPSprites.svg(S.pet.species, mood(), 110);
+    spriteEl.onclick = () => {
+      applyBond(PPBond.claimPet(S, PPStore.today()));
+      renderPet(true);   // re-render also refreshes the speech line via moodText()
+    };
     if (bounce) { spriteEl.classList.remove('bounce'); void spriteEl.offsetWidth; spriteEl.classList.add('bounce'); }
     $('pet-speech').textContent = moodText();
     $('pet-title').textContent = `${S.pet.name} the ${S.pet.species}`;
+    renderBond();
     renderEnergy('pet-energy-fill', 'pet-energy-label');
 
     const cr = $('consumables-row');
@@ -371,6 +416,7 @@
         S.pet.energy = Math.min(C.ENERGY_MAX, S.pet.energy + item.energy);
         touch();
         log('feed', { item: item.id, cost: item.price, energy: item.energy });
+        applyBond(PPBond.award(S, 'feed', { item: item.id }));
         toast(`${S.pet.name} loves it! +${item.energy} ⚡`);
         renderPet(true);
       });
@@ -459,6 +505,7 @@
   });
 
   $('onb-arrive-go').addEventListener('click', () => {
+    claimDailyVisit();
     renderHome();
     show('screen-home');
   });
@@ -502,6 +549,7 @@
 
   // ---------- boot ----------
   applyRegen();
+  claimDailyVisit();
   if (!S.pet.species) {
     renderOnboard();
     show('screen-onboard');
@@ -519,6 +567,7 @@
     state: () => S,
     game: window.PPGame,
     _renderHome: renderHome,
-    _grant(n) { S.coins += n; save(); renderHome(); }
+    _grant(n) { S.coins += n; save(); renderHome(); },
+    _grantXp(n) { S.bond.xp += n; S.bond.level = PPBond.levelFor(S.bond.xp).level; save(); renderHome(); }
   };
 })();
