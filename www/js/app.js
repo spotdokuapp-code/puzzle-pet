@@ -481,7 +481,7 @@
     selSpecies = null;
     const grid = $('species-grid');
     grid.innerHTML = '';
-    C.SPECIES.forEach(sp => {
+    (C.ENABLED_SPECIES || C.SPECIES).forEach(sp => {
       const b = document.createElement('button');
       b.className = 'species-btn';
       b.id = `species-${sp}`;
