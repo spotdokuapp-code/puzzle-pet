@@ -15,6 +15,8 @@ npm run serve        # http://localhost:8080
 
 ```bash
 npm run test:gen     # Node: generator determinism, uniqueness, perf
+npm run test:bond    # Node: bond xp, levels, daily gates, event-log backfill
+npm run test:speech  # Node: speech pool shape + the no-sad-lines rule
 npm run test:app     # Playwright e2e (full core loop)
 # If Playwright's pinned browser isn't downloaded:
 PP_CHROMIUM=/path/to/chromium npm run test:app

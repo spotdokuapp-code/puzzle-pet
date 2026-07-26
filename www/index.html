@@ -9,16 +9,50 @@
 <body>
 <div id="app">
 
-  <!-- Onboarding -->
+  <!-- Onboarding: four beats — welcome, meet, name, arrive -->
   <section class="screen" id="screen-onboard">
-    <div class="topbar"><div class="title">Welcome! 🌱</div></div>
-    <div class="card">
-      <h2>Choose your pal</h2>
-      <p class="subtle">They'll cheer you on while you solve. You can rename them any time.</p>
-      <div class="species-grid" id="species-grid"></div>
-      <input class="name-input" id="pet-name-input" maxlength="14" placeholder="Name your pal">
-      <button class="primary-btn" id="onboard-go" disabled>Let's go!</button>
+
+    <div class="onboard-step active" id="onb-welcome">
+      <div class="card onboard-card">
+        <div class="onboard-big">🌱</div>
+        <h2>Someone's been waiting to meet you.</h2>
+        <p class="subtle">Solve a few gentle puzzles each day. They'll keep you company.</p>
+        <button class="primary-btn" id="onb-welcome-go">Continue</button>
+      </div>
     </div>
+
+    <div class="onboard-step" id="onb-choose">
+      <div class="card onboard-card">
+        <h2>Who would you like to meet?</h2>
+        <p class="subtle">Tap to say hello. You can look at all of them before deciding.</p>
+        <div class="onboard-preview" id="onb-preview"></div>
+        <p class="onboard-blurb" id="onb-blurb">&nbsp;</p>
+        <div class="species-grid" id="species-grid"></div>
+        <button class="primary-btn" id="onb-choose-go" disabled>Choose them</button>
+      </div>
+    </div>
+
+    <div class="onboard-step" id="onb-name">
+      <div class="card onboard-card">
+        <div class="onboard-preview" id="onb-name-sprite"></div>
+        <h2>What will you call them?</h2>
+        <p class="subtle">You can change this any time.</p>
+        <input class="name-input" id="pet-name-input" maxlength="14" placeholder="Name your pal">
+        <button class="primary-btn" id="onb-name-go">That's the one</button>
+      </div>
+    </div>
+
+    <div class="onboard-step" id="onb-arrive">
+      <div class="card onboard-card">
+        <div class="scene arrive-scene">
+          <div class="speech" id="onb-speech"></div>
+          <div class="pet-sprite" id="onb-arrive-sprite"></div>
+        </div>
+        <p class="subtle">This is home. It's a bit bare for now — that's on purpose.</p>
+        <button class="primary-btn" id="onb-arrive-go">Let's solve something</button>
+      </div>
+    </div>
+
   </section>
 
   <!-- Home -->
@@ -26,6 +60,7 @@
     <div class="topbar">
       <div class="title">Puzzle Pet</div>
       <div class="chips">
+        <span class="chip" id="chip-bond">💛 1</span>
         <span class="chip" id="chip-streak">🔥 0</span>
         <span class="chip" id="chip-coins">🪙 0</span>
       </div>
@@ -106,6 +141,14 @@
     </div>
     <div class="card">
       <h2 id="pet-title">—</h2>
+      <div class="bond" id="pet-bond">
+        <div class="bond-head">
+          <span id="bond-name">New friends</span>
+          <span id="bond-level">Lv 1</span>
+        </div>
+        <div class="bond-track"><div class="bond-fill" id="bond-fill"></div></div>
+        <div class="bond-label" id="bond-label"></div>
+      </div>
       <div class="energy-wrap">
         <div class="energy-track"><div class="energy-fill" id="pet-energy-fill"></div></div>
         <div class="energy-label" id="pet-energy-label"></div>
@@ -171,10 +214,24 @@
   </div>
 </div>
 
+<!-- Rename overlay (name only — species is chosen once and kept) -->
+<div class="overlay" id="overlay-rename">
+  <div class="modal">
+    <h3>Rename</h3>
+    <input class="name-input" id="rename-input" maxlength="14" placeholder="New name">
+    <div class="opt-col">
+      <button class="primary-btn" id="rename-save">Save</button>
+      <button class="ghost-btn" id="rename-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="js/config.js"></script>
 <script src="js/generator.js"></script>
+<script src="js/bond.js"></script>
+<script src="js/speech.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/sprites.js"></script>
 <script src="js/daily.js"></script>
