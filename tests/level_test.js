@@ -97,5 +97,13 @@ check(PPLevel.backfill([{ type: 'puzzle_solved', kind: 'free' }], {}) === C.XP_F
 check(PPLevel.backfill({}, {}) === 0, 'object events arg doesn\'t throw');
 check(PPLevel.backfill('oops', 'oops') === 0, 'string events/days args don\'t throw');
 
+// --- v3 events carry their own authoritative xp; it wins over kind/slot ---
+check(PPLevel.backfill([{ type: 'puzzle_solved', kind: 'daily', slot: 2, xp: 0 }], {}) === 0,
+  'a replayed slot (xp:0) contributes 0, not the slot-2 payout');
+check(PPLevel.backfill([{ type: 'puzzle_solved', kind: 'daily', slot: 2, xp: 10 }], {}) === 10,
+  'explicit xp:10 contributes 10 even though slot 2 pays more');
+check(PPLevel.backfill([{ type: 'puzzle_solved', kind: 'daily', slot: 0 }], {}) === C.XP_PAYOUTS[0],
+  'a pre-v3 event with no xp field still credits by kind/slot');
+
 if (failures) { console.error(`${failures} failure(s)`); process.exit(1); }
 console.log('level tests: all passed');

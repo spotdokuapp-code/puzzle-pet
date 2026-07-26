@@ -62,11 +62,21 @@
   // under-credits — the event log is capped at 5000 entries. Never hand a
   // player a level they didn't earn. Defensively handles non-arrays and
   // non-objects without throwing.
+  //
+  // v3-era puzzle_solved events carry their own authoritative `xp` field
+  // (e.g. 0 for a replayed slot that paid no coins either). When present it
+  // is trusted over the kind/slot lookup — a replayed slot must never be
+  // re-credited the full payout on replay. Pre-v3 events have no xp field,
+  // so they fall back to the kind/slot lookup as before.
   function backfill(events, days) {
     let xp = 0;
     if (Array.isArray(events)) {
       events.forEach(e => {
         if (!e || e.type !== 'puzzle_solved') return;
+        if (typeof e.xp === 'number') {
+          xp += Math.max(0, e.xp);
+          return;
+        }
         if (e.kind === 'daily') {
           xp += xpFor('daily', { slot: e.slot });
         } else if (e.kind === 'free') {
