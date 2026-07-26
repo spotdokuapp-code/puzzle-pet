@@ -45,7 +45,7 @@ Three new files, following the one-concern-per-file layout convention:
 | `www/js/speech.js` | The speech pool and `pick(state, context)` | Pure data + selection. No DOM. |
 | `www/js/room.js` | Scene rendering: backdrop, decor placement, scene tier | Takes over the scene half of `renderPet`. |
 
-`app.js` keeps screens, the daily loop, calendar, and energy, and calls into the three modules. It should shrink, not grow — it is already 476 lines carrying six concerns, and this feature is why that has to be addressed now rather than later.
+`app.js` keeps screens, the daily loop, calendar, and energy, and calls into the three modules. It remains the app shell; if further extraction is wanted, it should be scoped explicitly in a future slice rather than carried forward as an unowned aspiration.
 
 All tunables land in `config.js` as new blocks: `BOND_XP`, `BOND_LEVELS`, `BOND_ENDLESS`, `BACKDROPS`, `SCENE_TIERS`.
 

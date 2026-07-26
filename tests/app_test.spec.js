@@ -190,6 +190,40 @@ test('bond rises from solving, petting, and visiting', async ({ page }) => {
   await expect(page.locator('#bond-level')).toHaveText(`Lv ${level}`);
 });
 
+test('a real award that crosses a threshold logs bond_level and raises the stored level', async ({ page }) => {
+  await page.goto('/');
+
+  // Onboard quickly.
+  await page.click('#onb-welcome-go');
+  await page.click('#species-cat');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  await page.click('#btn-pet');
+
+  // Sit one XP below a named tier's threshold, derived from config — never hardcoded.
+  const threshold = await page.evaluate(() => window.PPConfig.BOND_LEVELS[1].xp);
+  await page.evaluate((t) => {
+    const s = window.PP.state();
+    const need = t - 1 - s.bond.xp;
+    if (need > 0) window.PP._grantXp(need);
+  }, threshold);
+  const levelBefore = await page.evaluate(() => window.PP.state().bond.level);
+
+  // One real award via the app's own click handler — not _grantXp — so
+  // applyBond's level-up branch (the toast, the log, the endless-tier coin
+  // gift path) actually runs.
+  await page.click('#pet-sprite');
+
+  const after = await page.evaluate(() => {
+    const s = window.PP.state();
+    return { events: s.events.map(e => e.type), level: s.bond.level };
+  });
+  expect(after.events).toContain('bond_level');
+  expect(after.level).toBeGreaterThan(levelBefore);
+});
+
 test('a v1 save migrates to v2 with a backfilled bond level', async ({ page }) => {
   await page.goto('/');
 

@@ -15,7 +15,7 @@
     // --- Tier 1: base pool. Every mood needs an untagged line here so no
     //     level/mood combination can ever be starved. ---
     { text: '{name} is happily pottering about.', minLevel: 1, mood: 'content' },
-    { text: '{name} is watching the window.', minLevel: 1, mood: 'content' },
+    { text: '{name} is watching the world go by.', minLevel: 1, mood: 'content' },
     { text: '{name} settles in beside you.', minLevel: 1, mood: 'content' },
     { text: '{name} is having a great day!', minLevel: 1, mood: 'happy' },
     { text: '{name} did a little spin.', minLevel: 1, mood: 'happy' },

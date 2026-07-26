@@ -36,7 +36,19 @@
         if (raw) return Object.assign(defaults(), JSON.parse(raw));
         const old = localStorage.getItem(KEY_V1);
         if (old) {
-          const migrated = PPStore.migrate(Object.assign(defaults(), JSON.parse(old)));
+          const parsed = Object.assign(defaults(), JSON.parse(old));
+          let migrated;
+          try {
+            migrated = PPStore.migrate(parsed);
+          } catch (e) {
+            // The save parsed fine but migration itself blew up (e.g. a
+            // malformed events array). Keep everything the player already
+            // has — coins, pet, days, streak — and just start the bond
+            // from zero instead of throwing the whole save away.
+            parsed.version = 2;
+            parsed.bond = PPBond.blankBond();
+            migrated = parsed;
+          }
           PPStore.save(migrated);
           return migrated;
         }
@@ -52,7 +64,6 @@
       state.bond = PPBond.blankBond();
       state.bond.xp = PPBond.backfill(state.events);
       state.bond.level = PPBond.levelFor(state.bond.xp).level;
-      if (!state.room) state.room = { wallpaper: 'plain', flooring: 'plain' };
       return state;
     },
     save(state) {

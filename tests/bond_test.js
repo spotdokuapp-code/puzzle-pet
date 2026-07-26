@@ -105,6 +105,23 @@ s3.bond.xp = 100;
 PPBond.award(s3, 'nonsense');
 check(s3.bond.xp === 100, 'unknown source leaves xp unchanged, never negative');
 
+// --- award() ratchets the stored level: a post-launch threshold retune
+// must never demote a player who already reached a level. ---
+(function checkLevelRatchet() {
+  const s = freshState();
+  s.bond.xp = C.BOND_LEVELS[2].xp;   // exactly at level 3's threshold
+  s.bond.level = 3;
+  const originalThreshold = C.BOND_LEVELS[2].xp;
+  C.BOND_LEVELS[2].xp = originalThreshold + 1000; // retune level 3 far above this player's xp
+  try {
+    const a = PPBond.award(s, 'pet');
+    check(a.to < 3, 'sanity: the retuned threshold really does compute a lower level');
+    check(s.bond.level === 3, 'stored level never decreases when a threshold is retuned above existing xp');
+  } finally {
+    C.BOND_LEVELS[2].xp = originalThreshold;
+  }
+})();
+
 // --- claimVisit: once per day ---
 const s4 = freshState();
 const first = PPBond.claimVisit(s4, '2026-07-25');

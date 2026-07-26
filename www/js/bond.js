@@ -70,7 +70,11 @@
     const from = state.bond.level;
     state.bond.xp += gained;
     const to = levelFor(state.bond.xp).level;
-    state.bond.level = to;
+    // Ratchet: never store a level lower than the one already reached. XP
+    // never decreases, but BOND_LEVELS thresholds may be retuned later —
+    // without this, raising a threshold above an existing player's XP would
+    // demote them on their very next award. No decay, no lost levels, ever.
+    state.bond.level = Math.max(from, to);
     return { gained, from, to };
   }
 

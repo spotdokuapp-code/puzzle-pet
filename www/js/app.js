@@ -102,13 +102,13 @@
     if (!result) return;
     save();
     if (result.to > result.from) {
-      const info = PPBond.levelFor(S.bond.xp);
       log('bond_level', { level: result.to });
       if (result.to > C.BOND_LEVELS.length) {
         S.coins += C.BOND_ENDLESS.coinGift;
         save();
         toast(`Bond level ${result.to}! +${C.BOND_ENDLESS.coinGift} 🪙`);
       } else {
+        const info = PPBond.levelFor(S.bond.xp);
         toast(`${S.pet.name} — "${info.name}" 💛`);
       }
     }
@@ -370,7 +370,13 @@
     poster: 'right:8%; top:12%;'
   };
   function renderBond() {
-    const info = PPBond.levelFor(S.bond.xp);
+    let info = PPBond.levelFor(S.bond.xp);
+    // The stored level is ratcheted and can never go below what it already
+    // was. If a threshold retune makes levelFor(xp) compute lower than the
+    // stored level, show the stored level instead — floor the display at
+    // its own threshold so the name and progress bar stay internally
+    // consistent (never a demoted number, never a negative progress bar).
+    if (S.bond.level > info.level) info = PPBond.levelFor(PPBond.thresholdFor(S.bond.level));
     $('chip-bond').textContent = `💛 ${info.level}`;
     $('bond-name').textContent = info.name || `Level ${info.level}`;
     $('bond-level').textContent = `Lv ${info.level}`;
@@ -393,7 +399,9 @@
     const spriteEl = $('pet-sprite');
     spriteEl.innerHTML = PPSprites.svg(S.pet.species, mood(), 110);
     spriteEl.onclick = () => {
-      applyBond(PPBond.claimPet(S, PPStore.today()));
+      const pet = PPBond.claimPet(S, PPStore.today());
+      if (pet) log('bond_pet', { xp: pet.gained });
+      applyBond(pet);
       renderPet(true);   // re-render also refreshes the speech line via moodText()
     };
     if (bounce) { spriteEl.classList.remove('bounce'); void spriteEl.offsetWidth; spriteEl.classList.add('bounce'); }
@@ -499,8 +507,10 @@
     S.pet.name = ($('pet-name-input').value.trim() || C.DEFAULT_NAMES[selSpecies]).slice(0, 14);
     touch();
     log('pet_chosen', { species: S.pet.species, name: S.pet.name });
-    $('onb-arrive-sprite').innerHTML = PPSprites.svg(S.pet.species, 'happy', 110);
-    $('onb-speech').textContent = PPSpeech.pick(speechCtx());
+    const arriveSprite = $('onb-arrive-sprite');
+    arriveSprite.innerHTML = PPSprites.svg(S.pet.species, 'happy', 110);
+    arriveSprite.classList.add('bounce');
+    $('onb-speech').textContent = moodText();
     onbStep('onb-arrive');
   });
 
