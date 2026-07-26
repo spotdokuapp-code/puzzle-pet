@@ -27,8 +27,13 @@ PPSpeech.LINES.forEach((l, i) => {
   });
 });
 
+// Tiers stretch across the 30-level curve: highest gate is 20, so the
+// pet's voice keeps deepening deep into the long tail.
+check(Math.max(...PPSpeech.LINES.map(l => l.minLevel)) === 20, 'deepest tier is minLevel 20');
+check(PPSpeech.LINES.filter(l => l.minLevel === 20).length >= 3, 'the deep tier has lines');
+
 // --- No combination of level and mood is starved ---
-for (let level = 1; level <= 12; level++) {
+for (let level = 1; level <= 30; level++) {
   MOODS.forEach(mood => {
     const ctx = { name: 'Pip', mood, level, streak: 0, hour: 12, owned: 0, daysKnown: 0 };
     const line = PPSpeech.pick(ctx);
