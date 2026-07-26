@@ -7,6 +7,7 @@
     "serve": "npx http-server www -p 8080 -c-1",
     "test:gen": "node tests/generator_test.js",
     "test:bond": "node tests/bond_test.js",
+    "test:level": "node tests/level_test.js",
     "test:speech": "node tests/speech_test.js",
     "test:app": "npx playwright test tests/app_test.spec.js",
     "ios:init": "npx cap add ios",

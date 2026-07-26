@@ -61,7 +61,18 @@
     fox:   'Clever enough to solve it, polite enough to wait.',
     dino:  'Small, ancient, and very proud of you.',
     alien: 'Came a long way to watch someone think.'
-  }
+  },
+
+  // --- Leveling (v2). Puzzle XP only; values are spec-locked, tuning deferred. ---
+  ENABLED_SPECIES: ['cat', 'dog'],   // onboarding roster; others return as unlocks (plan 4)
+  XP_PAYOUTS: [10, 20, 35],          // daily easy / medium / hard
+  XP_SET_BONUS: 15,                  // granted with the coin set bonus
+  XP_FREEPLAY: 3,                    // intentionally weak; daily set stays best rate
+  LEVEL_XP: [                        // cumulative XP to REACH L2..L30 (29 entries)
+      60,   150,   270,   430,   630,   880,  1180,  1540,  1960,
+    2340,  2730,  3130,  3540,  3960,  4390,  4830,  5280,  5740,  6210,
+    6730,  7275,  7845,  8440,  9060,  9705, 10375, 11070, 11790, 12535
+  ]
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = PPConfig;
   global.PPConfig = PPConfig;
