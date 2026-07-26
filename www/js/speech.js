@@ -10,7 +10,7 @@
   'use strict';
 
   // minLevel gates when a line becomes eligible. The spec's "speech tiers"
-  // are simply the levels at which new lines unlock: 1, 2, 3, 5, 8.
+  // are simply the levels at which new lines unlock: 1, 3, 6, 12, 20.
   const LINES = [
     // --- Tier 1: base pool. Every mood needs an untagged line here so no
     //     level/mood combination can ever be starved. ---
@@ -22,28 +22,28 @@
     { text: '{name} missed you — so glad you\'re back! ✨', minLevel: 1, mood: 'missing' },
     { text: '{name} perks up the second they see you.', minLevel: 1, mood: 'missing' },
 
-    // --- Tier 2 (level 2) ---
-    { text: '{name} thinks you\'re rather good at this.', minLevel: 2, mood: 'happy' },
-    { text: '{name} is keeping your seat warm.', minLevel: 2, mood: 'content' },
-    { text: '{name} saved you the comfy spot.', minLevel: 2, mood: 'missing' },
+    // --- Tier 2 (level 3) ---
+    { text: '{name} thinks you\'re rather good at this.', minLevel: 3, mood: 'happy' },
+    { text: '{name} is keeping your seat warm.', minLevel: 3, mood: 'content' },
+    { text: '{name} saved you the comfy spot.', minLevel: 3, mood: 'missing' },
 
-    // --- Tier 3 (level 3): context-aware lines start here ---
-    { text: '{name} counted every day of that streak.', minLevel: 3, streakMin: 3 },
-    { text: 'Good morning! {name} was up first.', minLevel: 3, hourMax: 11 },
-    { text: '{name} is winding down with you.', minLevel: 3, hourMin: 20 },
-    { text: '{name} keeps nudging their favourite thing.', minLevel: 3, ownedMin: 2 },
+    // --- Tier 3 (level 6): context-aware lines start here ---
+    { text: '{name} counted every day of that streak.', minLevel: 6, streakMin: 3 },
+    { text: 'Good morning! {name} was up first.', minLevel: 6, hourMax: 11 },
+    { text: '{name} is winding down with you.', minLevel: 6, hourMin: 20 },
+    { text: '{name} keeps nudging their favourite thing.', minLevel: 6, ownedMin: 2 },
 
-    // --- Tier 4 (level 5) ---
-    { text: '{name} has opinions about that last puzzle.', minLevel: 5, mood: 'happy' },
-    { text: '{name} knows exactly how this goes now.', minLevel: 5, streakMin: 7 },
-    { text: '{name} rearranged things while you were out.', minLevel: 5, ownedMin: 3 },
-    { text: '{name} waited up.', minLevel: 5, mood: 'missing', hourMin: 20 },
+    // --- Tier 4 (level 12) ---
+    { text: '{name} has opinions about that last puzzle.', minLevel: 12, mood: 'happy' },
+    { text: '{name} knows exactly how this goes now.', minLevel: 12, streakMin: 7 },
+    { text: '{name} rearranged things while you were out.', minLevel: 12, ownedMin: 3 },
+    { text: '{name} waited up.', minLevel: 12, mood: 'missing', hourMin: 20 },
 
-    // --- Tier 5 (level 8): the long-history lines ---
-    { text: 'You and {name} have been at this a while now.', minLevel: 8, daysKnownMin: 30 },
-    { text: '{name} could probably solve it themselves by now.', minLevel: 8, streakMin: 14 },
-    { text: '{name} has made this place properly theirs.', minLevel: 8, ownedMin: 4 },
-    { text: '{name} kept the light on for you.', minLevel: 8, mood: 'missing' }
+    // --- Tier 5 (level 20): the long-history lines ---
+    { text: 'You and {name} have been at this a while now.', minLevel: 20, daysKnownMin: 30 },
+    { text: '{name} could probably solve it themselves by now.', minLevel: 20, streakMin: 14 },
+    { text: '{name} has made this place properly theirs.', minLevel: 20, ownedMin: 4 },
+    { text: '{name} kept the light on for you.', minLevel: 20, mood: 'missing' }
   ];
 
   function eligible(line, ctx) {

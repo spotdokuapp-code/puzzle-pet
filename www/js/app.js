@@ -108,11 +108,45 @@
     if (after > before) {
       S.pet.levelHigh = after;
       log('level_up', { level: after });
-      toast(`${S.pet.name} grew to Level ${after}! 💛`);
+      // Queued, not shown: the overlay appears after the win overlay's
+      // Continue and after any interstitial. Crossing two thresholds before
+      // it shows merges into one overlay (lowest from, highest to).
+      pendingLevelUp = { from: pendingLevelUp ? pendingLevelUp.from : before, to: after };
     }
     save();
     return gained;
   }
+
+  // Main-area unlocks between two levels, as display strings. Plan 3 adds
+  // area lines here; plan 4 adds species lines.
+  function unlocksFor(from, to) {
+    return C.PERMANENTS
+      .filter(p => p.area === 'main' && p.level > from && p.level <= to && !S.owned[p.id])
+      .map(p => `${p.emoji} ${p.name}`);
+  }
+
+  function maybeLevelUpOverlay() {
+    if (!pendingLevelUp) return;
+    const p = pendingLevelUp;
+    pendingLevelUp = null;
+    $('levelup-title').textContent = `${S.pet.name} grew to Level ${p.to}!`;
+    $('levelup-sprite').innerHTML = PPSprites.svg(S.pet.species, 'happy', 96);
+    const items = unlocksFor(p.from, p.to);
+    $('levelup-list').innerHTML = items.length
+      ? items.map(s => `<div class="unlock-row">${s}</div>`).join('')
+      : '<div class="unlock-row">💛 Growing stronger together</div>';
+    const cta = $('levelup-cta');
+    cta.textContent = items.length ? 'See the shop' : 'Continue';
+    cta.dataset.dest = items.length ? 'shop' : 'stay';
+    overlay('overlay-levelup', true);
+    const sp = $('levelup-sprite');
+    sp.classList.remove('bounce'); void sp.offsetWidth; sp.classList.add('bounce');
+  }
+
+  $('levelup-cta').addEventListener('click', () => {
+    overlay('overlay-levelup', false);
+    if ($('levelup-cta').dataset.dest === 'shop') { renderPet(); show('screen-pet'); }
+  });
 
   function touch() {
     S.lastActiveDay = PPStore.today();
@@ -285,6 +319,7 @@
       if (dest === 'screen-calendar') renderCalendar();
       renderHome();
       show(dest);
+      maybeLevelUpOverlay();
     });
   });
   $('game-back').addEventListener('click', () => {
@@ -379,7 +414,11 @@
     plant:  'right:10%; bottom:14px;',
     lamp:   'left:7%;  top:34%;',
     rug:    'right:26%; bottom:6px;',
-    poster: 'right:8%; top:12%;'
+    poster: 'right:8%; top:12%;',
+    bowl:   'left:24%; top:56%;',
+    shelf:  'right:6%; top:30%;',
+    tent:   'left:22%; bottom:8px;',
+    crug:   'right:18%; bottom:2px;'
   };
   function renderLevel() {
     const lv = PPLevel.displayLevel(S.pet);
@@ -448,7 +487,19 @@
 
     const pr = $('permanents-row');
     pr.innerHTML = '';
-    C.PERMANENTS.forEach(item => {
+    const lvNow = PPLevel.displayLevel(S.pet);
+    const mains = C.PERMANENTS.filter(p => p.area === 'main');
+    // Owned items are never hidden, whatever their level — a migrated save
+    // may own above its backfilled level. Unowned items show at or below
+    // the current level; the single next locked main tier is teased; all
+    // deeper content collapses to one line (no item-by-item teasing).
+    const visible = mains.filter(p => p.level <= lvNow || S.owned[p.id]);
+    const nextLocked = mains.filter(p => p.level > lvNow && !S.owned[p.id]);
+    const nextLevel = nextLocked.length ? nextLocked[0].level : null;
+    const teaseInRange = nextLevel !== null && (nextLevel - lvNow) <= C.SHOP_TEASE_RANGE;
+    const teased = teaseInRange ? nextLocked.filter(p => p.level === nextLevel) : [];
+
+    visible.forEach(item => {
       const owned = !!S.owned[item.id];
       const b = document.createElement('button');
       b.className = 'item-btn' + (owned ? ' owned' : '');
@@ -466,6 +517,29 @@
       });
       pr.appendChild(b);
     });
+
+    teased.forEach(item => {
+      const b = document.createElement('button');
+      b.className = 'item-btn locked';
+      b.id = `shop-${item.id}`;
+      b.disabled = true;
+      b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
+        `<span class="pr">Unlocks at Lv ${item.level} ✨</span>`;
+      pr.appendChild(b);
+    });
+
+    // Anything beyond the teased tier — deeper main levels and every unbuilt
+    // area — is one quiet line, not a tease. Real count, not a proxy: it must
+    // go false once every catalog item is either rendered above or owned.
+    const renderedIds = new Set([...visible, ...teased].map(p => p.id));
+    const hiddenCount = C.PERMANENTS.filter(p => !renderedIds.has(p.id) && !S.owned[p.id]).length;
+    if (hiddenCount > 0) {
+      const more = document.createElement('div');
+      more.className = 'shop-more';
+      more.id = 'shop-more';
+      more.textContent = `More to discover as ${S.pet.name} grows…`;
+      pr.appendChild(more);
+    }
   }
   $('btn-pet').addEventListener('click', () => { renderPet(); show('screen-pet'); });
   $('pet-back').addEventListener('click', () => { renderHome(); show('screen-home'); });
@@ -475,6 +549,10 @@
   // creature only previews it; a separate button commits. That matters because
   // the choice is permanent, so a mis-tap must never decide it.
   let selSpecies = null;
+
+  // Queued level-up crossing, shown after the win overlay's Continue and any
+  // interstitial (never stacked). In-memory only — see awardXp.
+  let pendingLevelUp = null;
 
   function onbStep(id) {
     document.querySelectorAll('.onboard-step').forEach(s => s.classList.remove('active'));

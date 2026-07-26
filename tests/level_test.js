@@ -16,6 +16,18 @@ for (let i = 1; i < C.LEVEL_XP.length; i++) {
 }
 check(PPLevel.CAP === 30, 'CAP is 30');
 
+// --- Guard: the "two thresholds crossed in one win" overlay-merge branch
+// (app.js pendingLevelUp keeps the lowest `from`/highest `to` across a
+// single win) is currently unreachable because no single win's XP can span
+// a full LEVEL_XP gap. If this ever fails, the merge branch just became
+// live and needs its own e2e coverage (a queued overlay spanning >1 level).
+const gaps = [C.LEVEL_XP[0] - 0];
+for (let i = 1; i < C.LEVEL_XP.length; i++) gaps.push(C.LEVEL_XP[i] - C.LEVEL_XP[i - 1]);
+const minGap = Math.min(...gaps);
+const maxSingleWinXp = C.XP_PAYOUTS[2] + C.XP_SET_BONUS;   // hard solve + set bonus, the biggest one-win payout
+check(minGap > maxSingleWinXp,
+  `min LEVEL_XP gap (${minGap}) exceeds max one-win XP (${maxSingleWinXp}) — merge branch stays inert`);
+
 // --- thresholdFor ---
 check(PPLevel.thresholdFor(1) === 0, 'L1 costs 0');
 check(PPLevel.thresholdFor(2) === C.LEVEL_XP[0], 'L2 threshold from config');

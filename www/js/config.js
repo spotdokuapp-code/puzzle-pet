@@ -17,17 +17,12 @@
 
   INTERSTITIAL_EVERY: 3,                  // between-puzzle cadence; never mid-puzzle
 
+  SHOP_TEASE_RANGE: 5,               // tease the next locked tier only if it is within this many levels
+
   CONSUMABLES: [
     { id: 'berry',  name: 'Berry',      emoji: '🫐', price: 10, energy: 25 },
     { id: 'apple',  name: 'Apple',      emoji: '🍎', price: 18, energy: 45 },
     { id: 'cake',   name: 'Honey cake', emoji: '🍰', price: 40, energy: 100 }
-  ],
-  PERMANENTS: [
-    { id: 'ball',   name: 'Bouncy ball',  emoji: '⚽', price: 80 },
-    { id: 'plant',  name: 'Little plant', emoji: '🪴', price: 120 },
-    { id: 'lamp',   name: 'Cozy lamp',    emoji: '🛋️', price: 160 },
-    { id: 'rug',    name: 'Warm rug',     emoji: '🧶', price: 220 },
-    { id: 'poster', name: 'Star poster',  emoji: '🌟', price: 260 }
   ],
 
   SPECIES: ['dog', 'cat', 'bunny', 'fox', 'dino', 'alien'],
@@ -51,6 +46,54 @@
       60,   150,   270,   430,   630,   880,  1180,  1540,  1960,
     2340,  2730,  3130,  3540,  3960,  4390,  4830,  5280,  5740,  6210,
     6730,  7275,  7845,  8440,  9060,  9705, 10375, 11070, 11790, 12535
+  ],
+
+  AREAS: [                           // room regions; plan 3 renders them, plan 2 only reads ids
+    { id: 'main',   level: 1 },
+    { id: 'nook',   level: 5,  name: 'Window nook' },
+    { id: 'garden', level: 10, name: 'Garden' },
+    { id: 'pond',   level: 20, name: 'Pond' },
+    { id: 'deck',   level: 30, name: 'Stargazing deck' }
+  ],
+
+  PERMANENTS: [
+    { id: 'ball',      name: 'Bouncy ball',        emoji: '⚽', price: 80,   level: 1,  area: 'main' },
+    { id: 'plant',     name: 'Little plant',       emoji: '🪴', price: 120,  level: 1,  area: 'main' },
+    { id: 'lamp',      name: 'Cozy lamp',          emoji: '🛋️', price: 160,  level: 2,  area: 'main' },
+    { id: 'rug',       name: 'Warm rug',           emoji: '🧶', price: 220,  level: 2,  area: 'main' },
+    { id: 'bowl',      name: 'Food bowl',          emoji: '🥣', price: 180,  level: 3,  area: 'main' },
+    { id: 'poster',    name: 'Star poster',        emoji: '🌟', price: 260,  level: 3,  area: 'main' },
+    { id: 'shelf',     name: 'Bookshelf',          emoji: '📚', price: 320,  level: 4,  area: 'main' },
+    { id: 'cushion',   name: 'Window cushion',     emoji: '💺', price: 300,  level: 5,  area: 'nook' },
+    { id: 'lights',    name: 'String lights',      emoji: '✨', price: 260,  level: 5,  area: 'nook' },
+    { id: 'toychest',  name: 'Toy chest',          emoji: '🧸', price: 380,  level: 6,  area: 'nook' },
+    { id: 'frame',     name: 'Picture frame',      emoji: '🖼️', price: 340,  level: 7,  area: 'nook' },
+    { id: 'tent',      name: 'Pet tent',           emoji: '⛺', price: 450,  level: 8,  area: 'main' },
+    { id: 'aquarium',  name: 'Aquarium',           emoji: '🐠', price: 520,  level: 9,  area: 'nook' },
+    { id: 'flowerbed', name: 'Flower bed',         emoji: '🌷', price: 400,  level: 10, area: 'garden' },
+    { id: 'fountain',  name: 'Fountain',           emoji: '⛲', price: 600,  level: 10, area: 'garden' },
+    { id: 'gnome',     name: 'Garden gnome',       emoji: '🪆', price: 380,  level: 11, area: 'garden' },
+    { id: 'clover',    name: 'Clover patch',       emoji: '🍀', price: 420,  level: 12, area: 'garden' },
+    { id: 'swing',     name: 'Tree swing',         emoji: '🛝', price: 480,  level: 13, area: 'garden' },
+    { id: 'chimes',    name: 'Wind chimes',        emoji: '🎐', price: 440,  level: 14, area: 'nook' },
+    { id: 'birdhouse', name: 'Birdhouse',          emoji: '🐦', price: 500,  level: 15, area: 'garden' },
+    { id: 'veggie',    name: 'Veggie patch',       emoji: '🥕', price: 550,  level: 16, area: 'garden' },
+    { id: 'hammock',   name: 'Hammock',            emoji: '🪢', price: 600,  level: 17, area: 'garden' },
+    { id: 'mushroom',  name: 'Mushroom ring',      emoji: '🍄', price: 520,  level: 18, area: 'garden' },
+    { id: 'lantern',   name: 'Lantern string',     emoji: '🏮', price: 580,  level: 19, area: 'garden' },
+    { id: 'lily',      name: 'Lily pads',          emoji: '🪷', price: 500,  level: 20, area: 'pond' },
+    { id: 'koi',       name: 'Koi friends',        emoji: '🐟', price: 700,  level: 20, area: 'pond' },
+    { id: 'stones',    name: 'Stepping stones',    emoji: '🪨', price: 620,  level: 21, area: 'pond' },
+    { id: 'cattails',  name: 'Cattails',           emoji: '🌾', price: 560,  level: 22, area: 'pond' },
+    { id: 'dock',      name: 'Little dock',        emoji: '🪵', price: 750,  level: 23, area: 'pond' },
+    { id: 'fossil',    name: 'Fossil rock',        emoji: '🦴', price: 650,  level: 24, area: 'pond' },
+    { id: 'firefly',   name: 'Firefly jar',        emoji: '🫙', price: 700,  level: 25, area: 'garden' },
+    { id: 'duck',      name: 'Duck friend',        emoji: '🦆', price: 800,  level: 26, area: 'pond' },
+    { id: 'rowboat',   name: 'Rowboat',            emoji: '🛶', price: 900,  level: 27, area: 'pond' },
+    { id: 'firepit',   name: 'Fire pit',           emoji: '🔥', price: 850,  level: 28, area: 'garden' },
+    { id: 'crug',      name: 'Constellation rug',  emoji: '🌌', price: 900,  level: 29, area: 'main' },
+    { id: 'telescope', name: 'Telescope',          emoji: '🔭', price: 1000, level: 30, area: 'deck' },
+    { id: 'mobile',    name: 'Shooting-star mobile', emoji: '🌠', price: 1200, level: 30, area: 'deck' }
   ]
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = PPConfig;

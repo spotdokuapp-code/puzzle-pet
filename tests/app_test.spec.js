@@ -59,6 +59,8 @@ test('full core loop', async ({ page }) => {
   await autosolve(page);
   await expect(page.locator('#win-coins')).toHaveText('+10 🪙');
   await continueWin(page);
+  // No threshold crossed by this lone easy solve — overlay must stay hidden.
+  await expect(page.locator('#overlay-levelup')).not.toHaveClass(/show/);
   await expect(page.locator('#chip-coins')).toHaveText('🪙 10');
   await expect(page.locator('#chip-streak')).toHaveText('🔥 1');
   await expect(page.locator('#slot-0')).toHaveClass(/done/);
@@ -86,6 +88,15 @@ test('full core loop', async ({ page }) => {
   await continueWin(page);
   await expect(page.locator('#chip-coins')).toHaveText('🪙 100');
   await expect(page.locator('#set-bonus-line')).toHaveClass(/earned/);
+
+  // The hard solve's payout plus set bonus (10+20+35+15=80) crosses L2
+  // (threshold 60); dismiss the queued overlay before continuing.
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-title')).toContainText('Level 2');
+  await page.click('#levelup-cta');
+  await expect(page.locator('#screen-pet')).toHaveClass(/active/);
+  await page.click('#pet-back');
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);
 
   // --- Calendar back-fill: play yesterday, still pays, extends streak ---
   await page.click('#btn-calendar');
@@ -192,6 +203,18 @@ test('xp comes from solving only, and levels ratchet up', async ({ page }) => {
   await page.click('#slot-1');   // medium, worth more than 1 XP
   await autosolve(page);
   await continueWin(page);
+
+  // Crossing L2 queues the level-up overlay; it appears after Continue
+  // (and any interstitial), never stacked. L2's unlocks are main items.
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-title')).toContainText('Level 2');
+  await expect(page.locator('#levelup-list')).toContainText('Cozy lamp');
+  await expect(page.locator('#levelup-list')).toContainText('Warm rug');
+  await expect(page.locator('#levelup-cta')).toHaveText('See the shop');
+  await page.click('#levelup-cta');
+  await expect(page.locator('#screen-pet')).toHaveClass(/active/);
+  await page.click('#pet-back');
+
   const s = await page.evaluate(() => window.PP.state());
   expect(s.pet.levelHigh).toBeGreaterThanOrEqual(2);
   expect(s.events.map(e => e.type)).toContain('level_up');
@@ -290,4 +313,73 @@ test('a v2 (bond) save migrates to v3, drops bond, and counts bonus days', async
   const backfillsAfterReload = await page.evaluate(() =>
     window.PP.state().events.filter(e => e.type === 'xp_backfill').length);
   expect(backfillsAfterReload).toBe(1);
+});
+
+test('the shop gates by level: visible tier, one teased tier, quiet collapse', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-dog');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  await page.click('#btn-pet');
+  // Lv 1: ball + plant purchasable; lamp + rug teased as the next tier;
+  // nothing deeper visible; the collapse line present; no non-main item.
+  await expect(page.locator('#shop-ball')).toBeVisible();
+  await expect(page.locator('#shop-plant')).toBeVisible();
+  await expect(page.locator('#shop-lamp')).toHaveClass(/locked/);
+  await expect(page.locator('#shop-lamp')).toBeDisabled();
+  await expect(page.locator('#shop-lamp .pr')).toHaveText('Unlocks at Lv 2 ✨');
+  await expect(page.locator('#shop-bowl')).toHaveCount(0);      // deeper main tier: hidden
+  await expect(page.locator('#shop-cushion')).toHaveCount(0);   // unbuilt area: hidden
+  await expect(page.locator('#shop-more')).toContainText('More to discover');
+
+  // Level up to 3: bowl + poster join the shop; the tease moves to Lv 4.
+  await page.evaluate(() => window.PP._grantXp(window.PPConfig.LEVEL_XP[1]));  // 150 → Lv 3
+  await page.click('#pet-back');
+  await page.click('#btn-pet');
+  await expect(page.locator('#shop-bowl')).toBeVisible();
+  await expect(page.locator('#shop-bowl')).not.toHaveClass(/locked/);
+  await expect(page.locator('#shop-shelf .pr')).toHaveText('Unlocks at Lv 4 ✨');
+
+  // Buy something newly unlocked and see it land in the room.
+  // _grant only re-renders the home screen; force a pet-screen re-render
+  // (same pattern as the XP grant above) so the buy button reflects the
+  // new balance.
+  await page.evaluate(() => window.PP._grant(200));
+  await page.click('#pet-back');
+  await page.click('#btn-pet');
+  await page.click('#shop-bowl');
+  await expect(page.locator('.deco')).toHaveCount(1);
+  await expect(page.locator('#shop-bowl .pr')).toHaveText('in room ✓');
+});
+
+test('level-up overlay with no main unlocks shows a quiet fallback and does not navigate', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-cat');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  // Sit one easy-solve below the L4→L5 threshold. L5 has no main-area
+  // unlocks (cushion/lights at level 5 are both 'nook'), so crossing it is
+  // the common case: the overlay must fall back to the quiet placeholder
+  // row instead of rendering an empty list.
+  const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
+  const l5 = await page.evaluate(() => window.PPConfig.LEVEL_XP[3]);
+  await page.evaluate(xp => window.PP._grantXp(xp), l5 - perEasy);
+
+  await page.click('#slot-0');
+  await autosolve(page);
+  await continueWin(page);
+
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-title')).toContainText('Level 5');
+  await expect(page.locator('#levelup-list')).toContainText('Growing stronger together');
+  await expect(page.locator('#levelup-cta')).toHaveText('Continue');
+  await page.click('#levelup-cta');
+  await expect(page.locator('#overlay-levelup')).not.toHaveClass(/show/);
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);   // dest 'stay': no navigation
 });
