@@ -256,3 +256,11 @@ body {
 .win-xp-gain { font-weight: 800; color: var(--accent-deep); font-size: .9rem; }
 .win-xp-track { height: 6px; background: var(--soft-line); border-radius: 999px; overflow: hidden; margin-top: 4px; }
 .win-xp-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #f7c873, var(--accent)); transition: width .6s ease; }
+
+/* Shop gating */
+.item-btn.locked { opacity: .55; }
+.item-btn.locked .pr { color: var(--ink-soft); font-weight: 700; }
+.shop-more {
+  flex: 1 1 100%; text-align: center; color: var(--ink-soft);
+  font-size: .8rem; font-style: italic; padding: 6px 0 2px;
+}

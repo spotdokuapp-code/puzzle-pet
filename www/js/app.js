@@ -379,7 +379,11 @@
     plant:  'right:10%; bottom:14px;',
     lamp:   'left:7%;  top:34%;',
     rug:    'right:26%; bottom:6px;',
-    poster: 'right:8%; top:12%;'
+    poster: 'right:8%; top:12%;',
+    bowl:   'left:30%; bottom:8px;',
+    shelf:  'right:6%; top:30%;',
+    tent:   'left:4%;  bottom:10px;',
+    crug:   'left:38%; bottom:4px;'
   };
   function renderLevel() {
     const lv = PPLevel.displayLevel(S.pet);
@@ -448,7 +452,17 @@
 
     const pr = $('permanents-row');
     pr.innerHTML = '';
-    C.PERMANENTS.forEach(item => {
+    const lvNow = PPLevel.displayLevel(S.pet);
+    const mains = C.PERMANENTS.filter(p => p.area === 'main');
+    // Owned items are never hidden, whatever their level — a migrated save
+    // may own above its backfilled level. Unowned items show at or below
+    // the current level; the single next locked main tier is teased; all
+    // deeper content collapses to one line (no item-by-item teasing).
+    const visible = mains.filter(p => p.level <= lvNow || S.owned[p.id]);
+    const nextLocked = mains.filter(p => p.level > lvNow && !S.owned[p.id]);
+    const nextLevel = nextLocked.length ? nextLocked[0].level : null;
+
+    visible.forEach(item => {
       const owned = !!S.owned[item.id];
       const b = document.createElement('button');
       b.className = 'item-btn' + (owned ? ' owned' : '');
@@ -466,6 +480,26 @@
       });
       pr.appendChild(b);
     });
+
+    nextLocked.filter(p => p.level === nextLevel).forEach(item => {
+      const b = document.createElement('button');
+      b.className = 'item-btn locked';
+      b.id = `shop-${item.id}`;
+      b.disabled = true;
+      b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
+        `<span class="pr">Lv ${item.level} ✨</span>`;
+      pr.appendChild(b);
+    });
+
+    // Anything beyond the next tier — deeper main levels and every unbuilt
+    // area — is one quiet line, not a tease.
+    if (nextLocked.some(p => p.level > nextLevel) || C.PERMANENTS.length > mains.length) {
+      const more = document.createElement('div');
+      more.className = 'shop-more';
+      more.id = 'shop-more';
+      more.textContent = `More to discover as ${S.pet.name} grows…`;
+      pr.appendChild(more);
+    }
   }
   $('btn-pet').addEventListener('click', () => { renderPet(); show('screen-pet'); });
   $('pet-back').addEventListener('click', () => { renderHome(); show('screen-home'); });
