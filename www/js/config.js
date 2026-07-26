@@ -33,27 +33,6 @@
   SPECIES: ['dog', 'cat', 'bunny', 'fox', 'dino', 'alien'],
   DEFAULT_NAMES: { dog: 'Biscuit', cat: 'Mochi', bunny: 'Clover', fox: 'Maple', dino: 'Pebble', alien: 'Zuzu' },
 
-  // --- Bond (care level). Starting points only; tuning happens post-implementation. ---
-  BOND_XP: {
-    dailySolve: [4, 6, 10],        // by slot: easy / medium / hard
-    setBonus: 6,
-    freeplaySolve: 1,              // worst rate, mirroring coins
-    visit: 3,                      // once per day
-    pet: 1,
-    petCapPerDay: 5,
-    feed: { berry: 2, apple: 4, cake: 8 }
-  },
-  BOND_LEVELS: [                   // cumulative XP thresholds; names are display copy only
-    { level: 1, xp: 0,    name: 'New friends' },
-    { level: 2, xp: 20,   name: 'Getting comfy' },
-    { level: 3, xp: 70,   name: 'Settling in' },
-    { level: 4, xp: 160,  name: 'Room to grow' },
-    { level: 5, xp: 320,  name: 'Little routines' },
-    { level: 6, xp: 560,  name: 'Long afternoons' },
-    { level: 7, xp: 900,  name: 'Home ground' },
-    { level: 8, xp: 1400, name: 'Old friends' }
-  ],
-  BOND_ENDLESS: { stepGrowth: 1.15, coinGift: 50 },
   SPECIES_BLURBS: {
     dog:   'Bounds over the moment you open the app.',
     cat:   'Supervises every puzzle from a comfortable distance.',
