@@ -49,7 +49,7 @@
   ],
 
   AREAS: [                           // room regions; plan 3 renders them, plan 2 only reads ids
-    { id: 'main',   level: 1 },
+    { id: 'main',   level: 1,  name: 'Home' },
     { id: 'nook',   level: 5,  name: 'Window nook' },
     { id: 'garden', level: 10, name: 'Garden' },
     { id: 'pond',   level: 20, name: 'Pond' },
@@ -94,7 +94,57 @@
     { id: 'crug',      name: 'Constellation rug',  emoji: '🌌', price: 900,  level: 29, area: 'main' },
     { id: 'telescope', name: 'Telescope',          emoji: '🔭', price: 1000, level: 30, area: 'deck' },
     { id: 'mobile',    name: 'Shooting-star mobile', emoji: '🌠', price: 1200, level: 30, area: 'deck' }
-  ]
+  ],
+
+  DECO_SPOTS: {                      // per-area decor positions; lattice geometry is test-enforced
+    main: {
+      ball:   'left:12%; bottom:12px;',
+      plant:  'right:10%; bottom:14px;',
+      lamp:   'left:7%;  top:34%;',
+      rug:    'right:26%; bottom:6px;',
+      poster: 'right:8%; top:12%;',
+      bowl:   'left:24%; top:56%;',
+      shelf:  'right:6%; top:30%;',
+      tent:   'left:22%; bottom:8px;',
+      crug:   'right:18%; bottom:2px;'
+    },
+    nook: {
+      cushion:  'left:8%;  bottom:10px;',
+      aquarium: 'left:30%; bottom:10px;',
+      toychest: 'left:52%; bottom:10px;',
+      lights:   'left:30%; top:16%;',
+      chimes:   'left:52%; top:16%;',
+      frame:    'left:74%; top:16%;'
+    },
+    garden: {
+      flowerbed: 'left:8%;  bottom:10px;',
+      veggie:    'left:30%; bottom:10px;',
+      mushroom:  'left:52%; bottom:10px;',
+      firepit:   'left:74%; bottom:10px;',
+      gnome:     'left:8%;  top:48%;',
+      clover:    'left:30%; top:48%;',
+      hammock:   'left:52%; top:48%;',
+      firefly:   'left:74%; top:48%;',
+      swing:     'left:8%;  top:16%;',
+      birdhouse: 'left:30%; top:16%;',
+      lantern:   'left:52%; top:16%;',
+      fountain:  'left:74%; top:16%;'
+    },
+    pond: {
+      lily:     'left:8%;  bottom:10px;',
+      stones:   'left:30%; bottom:10px;',
+      cattails: 'left:52%; bottom:10px;',
+      dock:     'left:74%; bottom:10px;',
+      fossil:   'left:8%;  top:48%;',
+      koi:      'left:30%; top:48%;',
+      duck:     'left:52%; top:48%;',
+      rowboat:  'left:74%; top:48%;'
+    },
+    deck: {
+      telescope: 'left:30%; bottom:10px;',
+      mobile:    'left:52%; top:16%;'
+    }
+  }
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = PPConfig;
   global.PPConfig = PPConfig;
