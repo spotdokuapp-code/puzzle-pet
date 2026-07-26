@@ -87,6 +87,15 @@ test('full core loop', async ({ page }) => {
   await expect(page.locator('#chip-coins')).toHaveText('🪙 100');
   await expect(page.locator('#set-bonus-line')).toHaveClass(/earned/);
 
+  // The hard solve's payout plus set bonus (10+20+35+15=80) crosses L2
+  // (threshold 60); dismiss the queued overlay before continuing.
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-title')).toContainText('Level 2');
+  await page.click('#levelup-cta');
+  await expect(page.locator('#screen-pet')).toHaveClass(/active/);
+  await page.click('#pet-back');
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);
+
   // --- Calendar back-fill: play yesterday, still pays, extends streak ---
   await page.click('#btn-calendar');
   await expect(page.locator('#screen-calendar')).toHaveClass(/active/);
@@ -192,6 +201,18 @@ test('xp comes from solving only, and levels ratchet up', async ({ page }) => {
   await page.click('#slot-1');   // medium, worth more than 1 XP
   await autosolve(page);
   await continueWin(page);
+
+  // Crossing L2 queues the level-up overlay; it appears after Continue
+  // (and any interstitial), never stacked. L2's unlocks are main items.
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-title')).toContainText('Level 2');
+  await expect(page.locator('#levelup-list')).toContainText('Cozy lamp');
+  await expect(page.locator('#levelup-list')).toContainText('Warm rug');
+  await expect(page.locator('#levelup-cta')).toHaveText('See the shop');
+  await page.click('#levelup-cta');
+  await expect(page.locator('#screen-pet')).toHaveClass(/active/);
+  await page.click('#pet-back');
+
   const s = await page.evaluate(() => window.PP.state());
   expect(s.pet.levelHigh).toBeGreaterThanOrEqual(2);
   expect(s.events.map(e => e.type)).toContain('level_up');

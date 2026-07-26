@@ -108,11 +108,43 @@
     if (after > before) {
       S.pet.levelHigh = after;
       log('level_up', { level: after });
-      toast(`${S.pet.name} grew to Level ${after}! 💛`);
+      // Queued, not shown: the overlay appears after the win overlay's
+      // Continue and after any interstitial. Crossing two thresholds before
+      // it shows merges into one overlay (lowest from, highest to).
+      pendingLevelUp = { from: pendingLevelUp ? pendingLevelUp.from : before, to: after };
     }
     save();
     return gained;
   }
+
+  // Main-area unlocks between two levels, as display strings. Plan 3 adds
+  // area lines here; plan 4 adds species lines.
+  function unlocksFor(from, to) {
+    return C.PERMANENTS
+      .filter(p => p.area === 'main' && p.level > from && p.level <= to)
+      .map(p => `${p.emoji} ${p.name}`);
+  }
+
+  function maybeLevelUpOverlay() {
+    if (!pendingLevelUp) return;
+    const p = pendingLevelUp;
+    pendingLevelUp = null;
+    $('levelup-title').textContent = `${S.pet.name} grew to Level ${p.to}!`;
+    $('levelup-sprite').innerHTML = PPSprites.svg(S.pet.species, 'happy', 96);
+    const items = unlocksFor(p.from, p.to);
+    $('levelup-list').innerHTML = items.map(s => `<div class="unlock-row">${s}</div>`).join('');
+    const cta = $('levelup-cta');
+    cta.textContent = items.length ? 'See the shop' : 'Continue';
+    cta.dataset.dest = items.length ? 'shop' : 'stay';
+    overlay('overlay-levelup', true);
+    const sp = $('levelup-sprite');
+    sp.classList.remove('bounce'); void sp.offsetWidth; sp.classList.add('bounce');
+  }
+
+  $('levelup-cta').addEventListener('click', () => {
+    overlay('overlay-levelup', false);
+    if ($('levelup-cta').dataset.dest === 'shop') { renderPet(); show('screen-pet'); }
+  });
 
   function touch() {
     S.lastActiveDay = PPStore.today();
@@ -285,6 +317,7 @@
       if (dest === 'screen-calendar') renderCalendar();
       renderHome();
       show(dest);
+      maybeLevelUpOverlay();
     });
   });
   $('game-back').addEventListener('click', () => {
@@ -509,6 +542,10 @@
   // creature only previews it; a separate button commits. That matters because
   // the choice is permanent, so a mis-tap must never decide it.
   let selSpecies = null;
+
+  // Queued level-up crossing, shown after the win overlay's Continue and any
+  // interstitial (never stacked). In-memory only — see awardXp.
+  let pendingLevelUp = null;
 
   function onbStep(id) {
     document.querySelectorAll('.onboard-step').forEach(s => s.classList.remove('active'));
