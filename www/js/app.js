@@ -413,7 +413,11 @@
     const spriteEl = $('pet-sprite');
     spriteEl.innerHTML = PPSprites.svg(S.pet.species, mood(), 110);
     spriteEl.onclick = () => {
-      log('petted', {});
+      const today = PPStore.today();
+      if (S.pet.petsLoggedDay !== today) {
+        S.pet.petsLoggedDay = today;
+        log('petted', {});   // once per day — the interaction itself stays unlimited
+      }
       renderPet(true);   // still responds, still speaks — only the XP is gone
     };
     if (bounce) { spriteEl.classList.remove('bounce'); void spriteEl.offsetWidth; spriteEl.classList.add('bounce'); }

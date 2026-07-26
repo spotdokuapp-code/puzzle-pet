@@ -49,8 +49,11 @@
           } catch (e) {
             // The save parsed but migration blew up (e.g. malformed events).
             // Keep everything the player has; start XP from zero rather than
-            // throwing the save away.
+            // throwing the save away. A tampered save can even have a null
+            // pet — guard here too, or this catch throws and the whole save
+            // is lost to defaults().
             parsed.version = 3;
+            if (!parsed.pet) parsed.pet = Object.assign({}, defaults().pet);
             parsed.pet.xp = 0;
             parsed.pet.levelHigh = 1;
             delete parsed.bond;
@@ -71,6 +74,7 @@
     // landed, and the old key is what makes re-migration safe.
     migrate(state) {
       state.version = 3;
+      if (!state.pet) state.pet = Object.assign({}, defaults().pet);
       const xp = PPLevel.backfill(state.events, state.days);
       state.pet.xp = xp;
       state.pet.levelHigh = PPLevel.levelForXp(xp).level;
