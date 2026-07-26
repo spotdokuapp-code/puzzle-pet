@@ -888,6 +888,19 @@ git commit -m "test(level): leveling e2e, v1 and v2 migration coverage"
 
 ---
 
+## Known deferred items (as shipped)
+
+Triaged during execution and the final whole-branch review; recorded here because the SDD scratch workspace is deleted after merge.
+
+- **Old storage keys (`puzzlepet.v1`, `puzzlepet.v2`) are left in localStorage deliberately** — `save()` swallows quota failures, so migration cannot prove the v3 write landed; the old key is what makes re-migration safe. Roughly 1 MB of dead bytes per migrated player; schedule a one-time cleanup pass once v3 is proven in the field. Do not "clean up" earlier.
+- An already-v3 save tampered to `"pet": null` degrades to in-memory defaults for the session (outer catch); the migrate-path equivalent is guarded. Tamper-only.
+- Persistent quota failure re-runs migration per load; duplicate `xp_backfill` events exist in memory only (the old key is never rewritten) and XP stays exact.
+- `awardXp` saves and `onPuzzleWin` saves again — one redundant localStorage write per solve.
+- `backfill` accepts `NaN` xp in principle; unreachable because NaN cannot survive a JSON round-trip. Swap to `Number.isFinite` if hardening.
+- Win-bar animation widths are unasserted (only the `+N ✦` text is); the underlying math is unit-tested.
+- **`speech.js` minLevels (1/2/3/5/8) were calibrated for the bond curve.** Under the new curve all 22 lines unlock by L8 (~day 20 full-set), so levels 9–30 add nothing to the pet's voice. Do a `minLevel` pass alongside plans 2–4.
+- **Spec §4's onboarding remainder is currently unowned:** the 3-beat restructure and the post-onboarding "Solve today's Easy puzzle" toast were deliberately not in this plan. Assign to plan 4 (which reworks onboarding for the switcher) or it will fall through.
+
 ## Handoff to plans 2–4
 
 What this plan leaves behind for the next plans to consume:

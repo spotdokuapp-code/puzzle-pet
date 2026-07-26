@@ -60,7 +60,7 @@
     <div class="topbar">
       <div class="title">Puzzle Pet</div>
       <div class="chips">
-        <span class="chip" id="chip-bond">💛 1</span>
+        <span class="chip" id="chip-level">Lv 1</span>
         <span class="chip" id="chip-streak">🔥 0</span>
         <span class="chip" id="chip-coins">🪙 0</span>
       </div>
@@ -71,6 +71,7 @@
       <div class="info">
         <h2 id="home-pet-name">—</h2>
         <div class="mood" id="home-pet-mood"></div>
+        <div class="level-thin"><div class="level-thin-fill" id="home-level-fill"></div></div>
         <div class="energy-wrap">
           <div class="energy-track"><div class="energy-fill" id="home-energy-fill"></div></div>
           <div class="energy-label" id="home-energy-label"></div>
@@ -141,13 +142,13 @@
     </div>
     <div class="card">
       <h2 id="pet-title">—</h2>
-      <div class="bond" id="pet-bond">
-        <div class="bond-head">
-          <span id="bond-name">New friends</span>
-          <span id="bond-level">Lv 1</span>
+      <div class="level-meter" id="pet-level">
+        <div class="level-head">
+          <span id="level-num">Lv 1</span>
+          <span id="level-total">0 ✦</span>
         </div>
-        <div class="bond-track"><div class="bond-fill" id="bond-fill"></div></div>
-        <div class="bond-label" id="bond-label"></div>
+        <div class="level-track"><div class="level-fill" id="level-fill"></div></div>
+        <div class="level-label" id="level-label"></div>
       </div>
       <div class="energy-wrap">
         <div class="energy-track"><div class="energy-fill" id="pet-energy-fill"></div></div>
@@ -174,6 +175,10 @@
     <div class="big" id="win-emoji">🎉</div>
     <h3 id="win-title">Solved!</h3>
     <div class="coin-burst" id="win-coins">+10 🪙</div>
+    <div class="win-xp" id="win-xp">
+      <span class="win-xp-gain" id="win-xp-gain">+10 ✦</span>
+      <div class="win-xp-track"><div class="win-xp-fill" id="win-xp-fill"></div></div>
+    </div>
     <p id="win-sub"></p>
     <button class="primary-btn" id="win-continue">Continue</button>
   </div>
@@ -230,7 +235,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/generator.js"></script>
-<script src="js/bond.js"></script>
+<script src="js/level.js"></script>
 <script src="js/speech.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/sprites.js"></script>

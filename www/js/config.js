@@ -33,27 +33,6 @@
   SPECIES: ['dog', 'cat', 'bunny', 'fox', 'dino', 'alien'],
   DEFAULT_NAMES: { dog: 'Biscuit', cat: 'Mochi', bunny: 'Clover', fox: 'Maple', dino: 'Pebble', alien: 'Zuzu' },
 
-  // --- Bond (care level). Starting points only; tuning happens post-implementation. ---
-  BOND_XP: {
-    dailySolve: [4, 6, 10],        // by slot: easy / medium / hard
-    setBonus: 6,
-    freeplaySolve: 1,              // worst rate, mirroring coins
-    visit: 3,                      // once per day
-    pet: 1,
-    petCapPerDay: 5,
-    feed: { berry: 2, apple: 4, cake: 8 }
-  },
-  BOND_LEVELS: [                   // cumulative XP thresholds; names are display copy only
-    { level: 1, xp: 0,    name: 'New friends' },
-    { level: 2, xp: 20,   name: 'Getting comfy' },
-    { level: 3, xp: 70,   name: 'Settling in' },
-    { level: 4, xp: 160,  name: 'Room to grow' },
-    { level: 5, xp: 320,  name: 'Little routines' },
-    { level: 6, xp: 560,  name: 'Long afternoons' },
-    { level: 7, xp: 900,  name: 'Home ground' },
-    { level: 8, xp: 1400, name: 'Old friends' }
-  ],
-  BOND_ENDLESS: { stepGrowth: 1.15, coinGift: 50 },
   SPECIES_BLURBS: {
     dog:   'Bounds over the moment you open the app.',
     cat:   'Supervises every puzzle from a comfortable distance.',
@@ -61,7 +40,18 @@
     fox:   'Clever enough to solve it, polite enough to wait.',
     dino:  'Small, ancient, and very proud of you.',
     alien: 'Came a long way to watch someone think.'
-  }
+  },
+
+  // --- Leveling (v2). Puzzle XP only; values are spec-locked, tuning deferred. ---
+  ENABLED_SPECIES: ['cat', 'dog'],   // onboarding roster; others return as unlocks (plan 4)
+  XP_PAYOUTS: [10, 20, 35],          // daily easy / medium / hard
+  XP_SET_BONUS: 15,                  // granted with the coin set bonus
+  XP_FREEPLAY: 3,                    // intentionally weak; daily set stays best rate
+  LEVEL_XP: [                        // cumulative XP to REACH L2..L30 (29 entries)
+      60,   150,   270,   430,   630,   880,  1180,  1540,  1960,
+    2340,  2730,  3130,  3540,  3960,  4390,  4830,  5280,  5740,  6210,
+    6730,  7275,  7845,  8440,  9060,  9705, 10375, 11070, 11790, 12535
+  ]
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = PPConfig;
   global.PPConfig = PPConfig;

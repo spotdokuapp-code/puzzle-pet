@@ -89,39 +89,29 @@
     return {
       name: S.pet.name,
       mood: mood(),
-      level: S.bond.level,
+      level: PPLevel.displayLevel(S.pet),
       streak: streak(),
       hour: new Date().getHours(),
       owned: Object.keys(S.owned).length,
       daysKnown
     };
   }
-  // Applies one bond award: persists, logs a level-up, pays the endless-tier
-  // coin gift, and toasts. Safe to call with null (a spent daily gate).
-  function applyBond(result) {
-    if (!result) return;
-    save();
-    if (result.to > result.from) {
-      log('bond_level', { level: result.to });
-      if (result.to > C.BOND_LEVELS.length) {
-        S.coins += C.BOND_ENDLESS.coinGift;
-        save();
-        toast(`Bond level ${result.to}! +${C.BOND_ENDLESS.coinGift} 🪙`);
-      } else {
-        const info = PPBond.levelFor(S.bond.xp);
-        toast(`${S.pet.name} — "${info.name}" 💛`);
-      }
+  // The only place XP enters the game. Puzzle solves only — feeding, petting
+  // and visiting are interactions, not XP sources. Returns the XP gained so
+  // the win overlay can show it. Ratchet: levelHigh only ever rises.
+  function awardXp(source, opts) {
+    const gained = PPLevel.xpFor(source, opts);
+    if (!gained) return 0;
+    const before = PPLevel.displayLevel(S.pet);
+    S.pet.xp += gained;
+    const after = PPLevel.displayLevel(S.pet);
+    if (after > before) {
+      S.pet.levelHigh = after;
+      log('level_up', { level: after });
+      toast(`${S.pet.name} grew to Level ${after}! 💛`);
     }
-  }
-
-  // Once per calendar day, for a player who actually has a pet.
-  // Safe to call more than once per load — claimVisit itself is the gate.
-  function claimDailyVisit() {
-    if (!S.pet.species) return;
-    const visit = PPBond.claimVisit(S, PPStore.today());
-    if (!visit) return;
-    log('bond_visit', { xp: visit.gained });
-    applyBond(visit);
+    save();
+    return gained;
   }
 
   function touch() {
@@ -149,7 +139,7 @@
   function renderHome() {
     $('chip-coins').textContent = `🪙 ${S.coins}`;
     $('chip-streak').textContent = `🔥 ${streak()}`;
-    renderBond();
+    renderLevel();
     $('home-pet-sprite').innerHTML = PPSprites.svg(S.pet.species, mood(), 72);
     $('home-pet-name').textContent = S.pet.name;
     $('home-pet-mood').textContent = moodText();
@@ -229,17 +219,18 @@
 
   function onPuzzleWin(result) {
     let earned = 0;
+    let gainedXp = 0;
     let sub = '';
     if (gameCtx.kind === 'daily') {
       const day = ensureDay(gameCtx.date);
       if (!day.slots[gameCtx.slot]) {
         day.slots[gameCtx.slot] = true;
         earned += C.DAILY_PAYOUTS[gameCtx.slot];
-        applyBond(PPBond.award(S, 'daily', { slot: gameCtx.slot }));
+        gainedXp += awardXp('daily', { slot: gameCtx.slot });
         if (day.slots.every(Boolean) && !day.bonus) {
           day.bonus = true;
           earned += C.DAILY_SET_BONUS;
-          applyBond(PPBond.award(S, 'setBonus'));
+          gainedXp += awardXp('setBonus');
           sub = `Whole set finished — +${C.DAILY_SET_BONUS} 🪙 bonus! ${S.pet.name} is thrilled.`;
         } else if (gameCtx.slot === 0) {
           sub = `Streak safe! ${S.pet.name}'s day is made. 💛`;
@@ -247,12 +238,12 @@
       }
       log('puzzle_solved', {
         kind: 'daily', date: gameCtx.date, slot: gameCtx.slot,
-        ms: result.ms, mistakes: result.mistakes, hints: result.hintsUsed, coins: earned
+        ms: result.ms, mistakes: result.mistakes, hints: result.hintsUsed, coins: earned, xp: gainedXp
       });
     } else {
       earned = C.FREEPLAY_PAYOUT;
-      applyBond(PPBond.award(S, 'freeplay'));
-      log('puzzle_solved', { kind: 'free', ms: result.ms, mistakes: result.mistakes, hints: result.hintsUsed, coins: earned });
+      gainedXp = awardXp('freeplay');
+      log('puzzle_solved', { kind: 'free', ms: result.ms, mistakes: result.mistakes, hints: result.hintsUsed, coins: earned, xp: gainedXp });
     }
     S.coins += earned;
     S.solves++;
@@ -262,6 +253,27 @@
     $('win-title').textContent = 'Solved!';
     $('win-coins').textContent = earned > 0 ? `+${earned} 🪙` : 'Nice one!';
     $('win-sub').textContent = sub;
+
+    const info = PPLevel.levelForXp(S.pet.xp);
+    const gx = $('win-xp');
+    if (gainedXp > 0) {
+      gx.style.display = '';
+      $('win-xp-gain').textContent = `+${gainedXp} ✦`;
+      const fill = $('win-xp-fill');
+      const prev = PPLevel.levelForXp(S.pet.xp - gainedXp);
+      // Start the bar where it was before this solve, then animate to now.
+      // A crossed threshold or the cap just reads as a full bar.
+      fill.style.transition = 'none';
+      fill.style.width = prev.atCap ? '100%'
+        : `${Math.round(100 * Math.max(0, prev.into) / prev.needed)}%`;
+      void fill.offsetWidth;
+      fill.style.transition = '';
+      fill.style.width = info.atCap || info.level > prev.level ? '100%'
+        : `${Math.round(100 * info.into / info.needed)}%`;
+    } else {
+      gx.style.display = 'none';   // replayed slot: no XP, no bar
+    }
+
     overlay('overlay-win', true);
   }
 
@@ -369,19 +381,21 @@
     rug:    'right:26%; bottom:6px;',
     poster: 'right:8%; top:12%;'
   };
-  function renderBond() {
-    let info = PPBond.levelFor(S.bond.xp);
-    // The stored level is ratcheted and can never go below what it already
-    // was. If a threshold retune makes levelFor(xp) compute lower than the
-    // stored level, show the stored level instead — floor the display at
-    // its own threshold so the name and progress bar stay internally
-    // consistent (never a demoted number, never a negative progress bar).
-    if (S.bond.level > info.level) info = PPBond.levelFor(PPBond.thresholdFor(S.bond.level));
-    $('chip-bond').textContent = `💛 ${info.level}`;
-    $('bond-name').textContent = info.name || `Level ${info.level}`;
-    $('bond-level').textContent = `Lv ${info.level}`;
-    $('bond-fill').style.width = `${Math.round(100 * info.into / info.needed)}%`;
-    $('bond-label').textContent = `${info.into} / ${info.needed} to the next level`;
+  function renderLevel() {
+    const lv = PPLevel.displayLevel(S.pet);
+    const info = PPLevel.levelForXp(S.pet.xp);
+    $('chip-level').textContent = `Lv ${lv}`;
+    $('level-num').textContent = `Lv ${lv}`;
+    $('level-total').textContent = `${S.pet.xp} ✦`;
+    // Ratcheted above the derived level (post-retune) or at the cap: full bar.
+    const pct = (info.atCap || lv > info.level) ? 100
+      : Math.round(100 * info.into / info.needed);
+    $('level-fill').style.width = `${pct}%`;
+    $('home-level-fill').style.width = `${pct}%`;
+    $('level-label').textContent = info.atCap
+      ? `Level ${PPLevel.CAP} — what a journey ✦`
+      : (lv > info.level ? `${S.pet.xp} ✦ and counting`
+                         : `${info.into} / ${info.needed} ✦ to Lv ${info.level + 1}`);
   }
   function renderPet(bounce) {
     $('chip-coins-pet').textContent = `🪙 ${S.coins}`;
@@ -399,15 +413,17 @@
     const spriteEl = $('pet-sprite');
     spriteEl.innerHTML = PPSprites.svg(S.pet.species, mood(), 110);
     spriteEl.onclick = () => {
-      const pet = PPBond.claimPet(S, PPStore.today());
-      if (pet) log('bond_pet', { xp: pet.gained });
-      applyBond(pet);
-      renderPet(true);   // re-render also refreshes the speech line via moodText()
+      const today = PPStore.today();
+      if (S.pet.petsLoggedDay !== today) {
+        S.pet.petsLoggedDay = today;
+        log('petted', {});   // once per day — the interaction itself stays unlimited
+      }
+      renderPet(true);   // still responds, still speaks — only the XP is gone
     };
     if (bounce) { spriteEl.classList.remove('bounce'); void spriteEl.offsetWidth; spriteEl.classList.add('bounce'); }
     $('pet-speech').textContent = moodText();
     $('pet-title').textContent = `${S.pet.name} the ${S.pet.species}`;
-    renderBond();
+    renderLevel();
     renderEnergy('pet-energy-fill', 'pet-energy-label');
 
     const cr = $('consumables-row');
@@ -424,7 +440,6 @@
         S.pet.energy = Math.min(C.ENERGY_MAX, S.pet.energy + item.energy);
         touch();
         log('feed', { item: item.id, cost: item.price, energy: item.energy });
-        applyBond(PPBond.award(S, 'feed', { item: item.id }));
         toast(`${S.pet.name} loves it! +${item.energy} ⚡`);
         renderPet(true);
       });
@@ -470,7 +485,7 @@
     selSpecies = null;
     const grid = $('species-grid');
     grid.innerHTML = '';
-    C.SPECIES.forEach(sp => {
+    (C.ENABLED_SPECIES || C.SPECIES).forEach(sp => {
       const b = document.createElement('button');
       b.className = 'species-btn';
       b.id = `species-${sp}`;
@@ -515,7 +530,6 @@
   });
 
   $('onb-arrive-go').addEventListener('click', () => {
-    claimDailyVisit();
     renderHome();
     show('screen-home');
   });
@@ -559,7 +573,11 @@
 
   // ---------- boot ----------
   applyRegen();
-  claimDailyVisit();
+  if (S.backfillToast) {
+    toast(`${S.pet.name} grew to Level ${S.backfillToast} while thinking about all the puzzles you've solved together! 💛`, 4000);
+    delete S.backfillToast;
+    save();
+  }
   if (!S.pet.species) {
     renderOnboard();
     show('screen-onboard');
@@ -578,6 +596,10 @@
     game: window.PPGame,
     _renderHome: renderHome,
     _grant(n) { S.coins += n; save(); renderHome(); },
-    _grantXp(n) { S.bond.xp += n; S.bond.level = PPBond.levelFor(S.bond.xp).level; save(); renderHome(); }
+    _grantXp(n) {
+      S.pet.xp += n;
+      S.pet.levelHigh = Math.max(S.pet.levelHigh || 1, PPLevel.levelForXp(S.pet.xp).level);
+      save(); renderHome();
+    }
   };
 })();
