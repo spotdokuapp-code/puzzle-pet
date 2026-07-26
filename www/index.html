@@ -231,6 +231,17 @@
   </div>
 </div>
 
+<!-- Level-up overlay: shown after the win overlay's Continue and after any
+     interstitial — never stacked on an ad, never mid-puzzle. -->
+<div class="overlay" id="overlay-levelup">
+  <div class="modal">
+    <div class="levelup-sprite pet-sprite" id="levelup-sprite"></div>
+    <h3 id="levelup-title">Level up!</h3>
+    <div class="levelup-list" id="levelup-list"></div>
+    <button class="primary-btn" id="levelup-cta">Continue</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="js/config.js"></script>
