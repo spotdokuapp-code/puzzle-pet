@@ -248,3 +248,11 @@ body {
   transition: width .4s ease;
 }
 .bond-label { font-size: .75rem; color: var(--ink-soft); margin-top: 3px; }
+
+/* Leveling */
+.level-thin { height: 4px; background: var(--soft-line); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.level-thin-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #f7c873, var(--accent)); transition: width .4s ease; }
+.win-xp { margin: 6px auto 2px; max-width: 220px; }
+.win-xp-gain { font-weight: 800; color: var(--accent-deep); font-size: .9rem; }
+.win-xp-track { height: 6px; background: var(--soft-line); border-radius: 999px; overflow: hidden; margin-top: 4px; }
+.win-xp-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #f7c873, var(--accent)); transition: width .6s ease; }
