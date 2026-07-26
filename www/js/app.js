@@ -380,10 +380,10 @@
     lamp:   'left:7%;  top:34%;',
     rug:    'right:26%; bottom:6px;',
     poster: 'right:8%; top:12%;',
-    bowl:   'left:30%; bottom:8px;',
+    bowl:   'left:24%; top:56%;',
     shelf:  'right:6%; top:30%;',
-    tent:   'left:4%;  bottom:10px;',
-    crug:   'left:38%; bottom:4px;'
+    tent:   'left:22%; bottom:8px;',
+    crug:   'right:18%; bottom:2px;'
   };
   function renderLevel() {
     const lv = PPLevel.displayLevel(S.pet);
