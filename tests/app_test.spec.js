@@ -59,6 +59,8 @@ test('full core loop', async ({ page }) => {
   await autosolve(page);
   await expect(page.locator('#win-coins')).toHaveText('+10 🪙');
   await continueWin(page);
+  // No threshold crossed by this lone easy solve — overlay must stay hidden.
+  await expect(page.locator('#overlay-levelup')).not.toHaveClass(/show/);
   await expect(page.locator('#chip-coins')).toHaveText('🪙 10');
   await expect(page.locator('#chip-streak')).toHaveText('🔥 1');
   await expect(page.locator('#slot-0')).toHaveClass(/done/);
@@ -328,7 +330,7 @@ test('the shop gates by level: visible tier, one teased tier, quiet collapse', a
   await expect(page.locator('#shop-plant')).toBeVisible();
   await expect(page.locator('#shop-lamp')).toHaveClass(/locked/);
   await expect(page.locator('#shop-lamp')).toBeDisabled();
-  await expect(page.locator('#shop-lamp .pr')).toHaveText('Lv 2 ✨');
+  await expect(page.locator('#shop-lamp .pr')).toHaveText('Unlocks at Lv 2 ✨');
   await expect(page.locator('#shop-bowl')).toHaveCount(0);      // deeper main tier: hidden
   await expect(page.locator('#shop-cushion')).toHaveCount(0);   // unbuilt area: hidden
   await expect(page.locator('#shop-more')).toContainText('More to discover');
@@ -339,7 +341,7 @@ test('the shop gates by level: visible tier, one teased tier, quiet collapse', a
   await page.click('#btn-pet');
   await expect(page.locator('#shop-bowl')).toBeVisible();
   await expect(page.locator('#shop-bowl')).not.toHaveClass(/locked/);
-  await expect(page.locator('#shop-shelf .pr')).toHaveText('Lv 4 ✨');
+  await expect(page.locator('#shop-shelf .pr')).toHaveText('Unlocks at Lv 4 ✨');
 
   // Buy something newly unlocked and see it land in the room.
   // _grant only re-renders the home screen; force a pet-screen re-render
@@ -351,4 +353,33 @@ test('the shop gates by level: visible tier, one teased tier, quiet collapse', a
   await page.click('#shop-bowl');
   await expect(page.locator('.deco')).toHaveCount(1);
   await expect(page.locator('#shop-bowl .pr')).toHaveText('in room ✓');
+});
+
+test('level-up overlay with no main unlocks shows a quiet fallback and does not navigate', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-cat');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  // Sit one easy-solve below the L4→L5 threshold. L5 has no main-area
+  // unlocks (cushion/lights at level 5 are both 'nook'), so crossing it is
+  // the common case: the overlay must fall back to the quiet placeholder
+  // row instead of rendering an empty list.
+  const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
+  const l5 = await page.evaluate(() => window.PPConfig.LEVEL_XP[3]);
+  await page.evaluate(xp => window.PP._grantXp(xp), l5 - perEasy);
+
+  await page.click('#slot-0');
+  await autosolve(page);
+  await continueWin(page);
+
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-title')).toContainText('Level 5');
+  await expect(page.locator('#levelup-list')).toContainText('Growing stronger together');
+  await expect(page.locator('#levelup-cta')).toHaveText('Continue');
+  await page.click('#levelup-cta');
+  await expect(page.locator('#overlay-levelup')).not.toHaveClass(/show/);
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);   // dest 'stay': no navigation
 });
