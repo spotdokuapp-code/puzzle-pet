@@ -233,6 +233,9 @@ test('a v1 save migrates to v3 with xp backfilled at the new values', async ({ p
   // Exactly once: a reload must not re-award.
   await page.reload();
   expect(await page.evaluate(() => window.PP.state().pet.xp)).toBe(exact);
+  const backfills = await page.evaluate(() =>
+    window.PP.state().events.filter(e => e.type === 'xp_backfill').length);
+  expect(backfills).toBe(1);
 });
 
 test('a v2 (bond) save migrates to v3, drops bond, and counts bonus days', async ({ page }) => {
@@ -267,4 +270,7 @@ test('a v2 (bond) save migrates to v3, drops bond, and counts bonus days', async
   expect(s.bond).toBeUndefined();
   expect(s.coins).toBe(55);
   expect(s.pet.name).toBe('Pebble');
+  const backfills = await page.evaluate(() =>
+    window.PP.state().events.filter(e => e.type === 'xp_backfill').length);
+  expect(backfills).toBe(1);
 });
