@@ -121,7 +121,7 @@
   // area lines here; plan 4 adds species lines.
   function unlocksFor(from, to) {
     return C.PERMANENTS
-      .filter(p => p.area === 'main' && p.level > from && p.level <= to)
+      .filter(p => p.area === 'main' && p.level > from && p.level <= to && !S.owned[p.id])
       .map(p => `${p.emoji} ${p.name}`);
   }
 
@@ -132,7 +132,9 @@
     $('levelup-title').textContent = `${S.pet.name} grew to Level ${p.to}!`;
     $('levelup-sprite').innerHTML = PPSprites.svg(S.pet.species, 'happy', 96);
     const items = unlocksFor(p.from, p.to);
-    $('levelup-list').innerHTML = items.map(s => `<div class="unlock-row">${s}</div>`).join('');
+    $('levelup-list').innerHTML = items.length
+      ? items.map(s => `<div class="unlock-row">${s}</div>`).join('')
+      : '<div class="unlock-row">💛 Growing stronger together</div>';
     const cta = $('levelup-cta');
     cta.textContent = items.length ? 'See the shop' : 'Continue';
     cta.dataset.dest = items.length ? 'shop' : 'stay';
@@ -494,6 +496,8 @@
     const visible = mains.filter(p => p.level <= lvNow || S.owned[p.id]);
     const nextLocked = mains.filter(p => p.level > lvNow && !S.owned[p.id]);
     const nextLevel = nextLocked.length ? nextLocked[0].level : null;
+    const teaseInRange = nextLevel !== null && (nextLevel - lvNow) <= C.SHOP_TEASE_RANGE;
+    const teased = teaseInRange ? nextLocked.filter(p => p.level === nextLevel) : [];
 
     visible.forEach(item => {
       const owned = !!S.owned[item.id];
@@ -514,19 +518,22 @@
       pr.appendChild(b);
     });
 
-    nextLocked.filter(p => p.level === nextLevel).forEach(item => {
+    teased.forEach(item => {
       const b = document.createElement('button');
       b.className = 'item-btn locked';
       b.id = `shop-${item.id}`;
       b.disabled = true;
       b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
-        `<span class="pr">Lv ${item.level} ✨</span>`;
+        `<span class="pr">Unlocks at Lv ${item.level} ✨</span>`;
       pr.appendChild(b);
     });
 
-    // Anything beyond the next tier — deeper main levels and every unbuilt
-    // area — is one quiet line, not a tease.
-    if (nextLocked.some(p => p.level > nextLevel) || C.PERMANENTS.length > mains.length) {
+    // Anything beyond the teased tier — deeper main levels and every unbuilt
+    // area — is one quiet line, not a tease. Real count, not a proxy: it must
+    // go false once every catalog item is either rendered above or owned.
+    const renderedIds = new Set([...visible, ...teased].map(p => p.id));
+    const hiddenCount = C.PERMANENTS.filter(p => !renderedIds.has(p.id) && !S.owned[p.id]).length;
+    if (hiddenCount > 0) {
       const more = document.createElement('div');
       more.className = 'shop-more';
       more.id = 'shop-more';

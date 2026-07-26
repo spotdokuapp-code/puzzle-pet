@@ -17,6 +17,8 @@
 
   INTERSTITIAL_EVERY: 3,                  // between-puzzle cadence; never mid-puzzle
 
+  SHOP_TEASE_RANGE: 5,               // tease the next locked tier only if it is within this many levels
+
   CONSUMABLES: [
     { id: 'berry',  name: 'Berry',      emoji: '🫐', price: 10, energy: 25 },
     { id: 'apple',  name: 'Apple',      emoji: '🍎', price: 18, energy: 45 },

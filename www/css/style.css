@@ -259,7 +259,7 @@ body {
 
 /* Shop gating */
 .item-btn.locked { opacity: .55; }
-.item-btn.locked .pr { color: var(--ink-soft); font-weight: 700; }
+.item-btn.locked .pr { color: var(--ink-soft); font-weight: 700; font-size: .72rem; }
 .shop-more {
   flex: 1 1 100%; text-align: center; color: var(--ink-soft);
   font-size: .8rem; font-style: italic; padding: 6px 0 2px;
@@ -267,6 +267,8 @@ body {
 
 /* Level-up overlay */
 .levelup-sprite { display: inline-block; margin-bottom: 4px; }
+.levelup-sprite.bounce { animation: levelup-bounce .5s ease; }
+@keyframes levelup-bounce { 30% { transform: translateY(-14px) scale(1.06); } 60% { transform: translateY(0); } }
 .levelup-list { margin: 8px 0 12px; }
 .levelup-list .unlock-row {
   background: #fffdf8; border: 1px solid var(--soft-line); border-radius: 10px;
