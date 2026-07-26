@@ -7,12 +7,16 @@ Cozy iOS game: daily Star Battle-style logic puzzles earn coins to care for a sm
 - `www/index.html` — single page, all screens as `<section class="screen">`
 - `www/js/config.js` — ALL tunable numbers (economy, energy, ad cadence). Tune here, nowhere else.
 - `www/js/generator.js` — Star Battle generator/solver (seeded RNG, uniqueness-verified, difficulty by solver node count). Also loads in Node for tests.
-- `www/js/storage.js` — localStorage `puzzlepet.v1`, in-memory fallback, append-only event log
+- `www/js/storage.js` — localStorage `puzzlepet.v3`, in-memory fallback, append-only event log
+- `www/js/level.js` — XP curve/level math (pure, Node-loadable)
+- `www/js/speech.js` — speech pool
 - `www/js/sprites.js` — 6 original SVG creatures (dog, cat, bunny, fox, dino, alien) × 3 moods
 - `www/js/daily.js` — deterministic daily set (seed `daily:YYYY-MM-DD:slot`) + free play
 - `www/js/game.js` — board play: tap cycles empty→mark→piece, live conflict highlight, no fail state
 - `www/js/app.js` — screens, daily loop, streak/calendar, pet room, energy, ad stubs
 - `tests/generator_test.js` — Node (`npm run test:gen`)
+- `tests/level_test.js` — Node (`npm run test:level`)
+- `tests/speech_test.js` — Node (`npm run test:speech`)
 - `tests/app_test.spec.js` — Playwright e2e (`npm run test:app`; set `PP_CHROMIUM=<path>` to use a system chromium). Keep green.
 
 ## Non-negotiable design constraints
