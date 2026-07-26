@@ -227,8 +227,9 @@ test('a v1 save migrates to v2 with a backfilled bond level', async ({ page }) =
   // Backfill credited the logged solves and the feed.
   const cfg = await page.evaluate(() => window.PPConfig.BOND_XP);
   const backfilled = cfg.dailySolve[0] + cfg.dailySolve[1] + cfg.dailySolve[2] + cfg.feed.cake;
-  expect(s.bond.xp).toBeGreaterThanOrEqual(backfilled);   // plus today's visit
-  expect(s.bond.level).toBeGreaterThan(1);
+  // exact: backfill from the event log + today's boot-time visit award
+  expect(s.bond.xp).toBe(backfilled + cfg.visit);
+  expect(s.bond.level).toBe(2);
 
   // Nothing the player already had was disturbed.
   expect(s.coins).toBe(137);
