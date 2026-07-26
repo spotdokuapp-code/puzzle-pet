@@ -312,3 +312,43 @@ test('a v2 (bond) save migrates to v3, drops bond, and counts bonus days', async
     window.PP.state().events.filter(e => e.type === 'xp_backfill').length);
   expect(backfillsAfterReload).toBe(1);
 });
+
+test('the shop gates by level: visible tier, one teased tier, quiet collapse', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-dog');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  await page.click('#btn-pet');
+  // Lv 1: ball + plant purchasable; lamp + rug teased as the next tier;
+  // nothing deeper visible; the collapse line present; no non-main item.
+  await expect(page.locator('#shop-ball')).toBeVisible();
+  await expect(page.locator('#shop-plant')).toBeVisible();
+  await expect(page.locator('#shop-lamp')).toHaveClass(/locked/);
+  await expect(page.locator('#shop-lamp')).toBeDisabled();
+  await expect(page.locator('#shop-lamp .pr')).toHaveText('Lv 2 ✨');
+  await expect(page.locator('#shop-bowl')).toHaveCount(0);      // deeper main tier: hidden
+  await expect(page.locator('#shop-cushion')).toHaveCount(0);   // unbuilt area: hidden
+  await expect(page.locator('#shop-more')).toContainText('More to discover');
+
+  // Level up to 3: bowl + poster join the shop; the tease moves to Lv 4.
+  await page.evaluate(() => window.PP._grantXp(window.PPConfig.LEVEL_XP[1]));  // 150 → Lv 3
+  await page.click('#pet-back');
+  await page.click('#btn-pet');
+  await expect(page.locator('#shop-bowl')).toBeVisible();
+  await expect(page.locator('#shop-bowl')).not.toHaveClass(/locked/);
+  await expect(page.locator('#shop-shelf .pr')).toHaveText('Lv 4 ✨');
+
+  // Buy something newly unlocked and see it land in the room.
+  // _grant only re-renders the home screen; force a pet-screen re-render
+  // (same pattern as the XP grant above) so the buy button reflects the
+  // new balance.
+  await page.evaluate(() => window.PP._grant(200));
+  await page.click('#pet-back');
+  await page.click('#btn-pet');
+  await page.click('#shop-bowl');
+  await expect(page.locator('.deco')).toHaveCount(1);
+  await expect(page.locator('#shop-bowl .pr')).toHaveText('in room ✓');
+});
