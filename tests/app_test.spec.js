@@ -181,8 +181,13 @@ test('xp comes from solving only, and levels ratchet up', async ({ page }) => {
   await continueWin(page);
   expect(await page.evaluate(() => window.PP.state().pet.xp)).toBe(perEasy);
 
-  // One XP short of L2, then one real solve crosses it: level_up logged, chip updates.
+  // Pet-screen level label reflects the solve exactly: into/needed toward Lv 2.
   const l2 = await page.evaluate(() => window.PPConfig.LEVEL_XP[0]);
+  await page.click('#btn-pet');
+  await expect(page.locator('#level-label')).toHaveText(`${perEasy} / ${l2} ✦ to Lv 2`);
+  await page.click('#pet-back');
+
+  // One XP short of L2, then one real solve crosses it: level_up logged, chip updates.
   await page.evaluate(xp => window.PP._grantXp(xp), l2 - perEasy - 1);
   await page.click('#slot-1');   // medium, worth more than 1 XP
   await autosolve(page);
@@ -213,6 +218,11 @@ test('a v1 save migrates to v3 with xp backfilled at the new values', async ({ p
     }));
   });
   await page.reload();
+
+  // The migration toast (shown for 4s on boot) announces the level reached
+  // from history — asserted immediately after reload, well within that window.
+  await expect(page.locator('#toast')).toHaveClass(/show/);
+  await expect(page.locator('#toast')).toContainText('Level 2');
 
   // Straight to home — a migrated player is never re-onboarded, and a fox
   // chosen before the roster shrank keeps their fox.
@@ -273,4 +283,11 @@ test('a v2 (bond) save migrates to v3, drops bond, and counts bonus days', async
   const backfills = await page.evaluate(() =>
     window.PP.state().events.filter(e => e.type === 'xp_backfill').length);
   expect(backfills).toBe(1);
+
+  // Exactly once: a second reload must not re-migrate or re-award.
+  await page.reload();
+  expect(await page.evaluate(() => window.PP.state().pet.xp)).toBe(exact);
+  const backfillsAfterReload = await page.evaluate(() =>
+    window.PP.state().events.filter(e => e.type === 'xp_backfill').length);
+  expect(backfillsAfterReload).toBe(1);
 });
