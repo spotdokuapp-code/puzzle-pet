@@ -28,15 +28,17 @@ test('full core loop', async ({ page }) => {
   // Tapping previews only; a separate button commits, because species is permanent.
   await expect(page.locator('#onb-choose')).toHaveClass(/active/);
   await expect(page.locator('#onb-choose-go')).toBeDisabled();
-  await page.click('#species-fox');
+  const speciesShown = await page.locator('.species-btn').count();
+  expect(speciesShown).toBe(2);
+  await page.click('#species-dog');
   await expect(page.locator('#onb-blurb')).not.toHaveText('');
   await page.click('#species-cat');            // browsing is safe
-  await page.click('#species-fox');            // and reversible
+  await page.click('#species-dog');            // and reversible
   await expect(page.locator('#onb-choose-go')).toBeEnabled();
   await page.click('#onb-choose-go');
 
   await expect(page.locator('#onb-name')).toHaveClass(/active/);
-  await expect(page.locator('#pet-name-input')).toHaveValue('Maple');
+  await expect(page.locator('#pet-name-input')).toHaveValue('Biscuit');
   await page.fill('#pet-name-input', 'Pip');
   await page.click('#onb-name-go');
 
@@ -151,95 +153,56 @@ test('daily puzzles are deterministic for a given date', async ({ page }) => {
   expect(a).toBe(b);
 });
 
-test('bond rises from solving, petting, and visiting', async ({ page }) => {
+test('xp comes from solving only, and levels ratchet up', async ({ page }) => {
   await page.goto('/');
-
-  // Onboard quickly.
-  await page.click('#onb-welcome-go');
-  await page.click('#species-dino');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
-
-  // The daily visit is claimed once onboarding completes.
-  const afterVisit = await page.evaluate(() => window.PP.state().bond.xp);
-  expect(afterVisit).toBeGreaterThan(0);
-
-  // Solving the easy opener adds XP.
-  await page.click('#slot-0');
-  await autosolve(page);
-  await continueWin(page);
-  const afterSolve = await page.evaluate(() => window.PP.state().bond.xp);
-  expect(afterSolve).toBeGreaterThan(afterVisit);
-
-  // Petting is free but capped per day.
-  await page.click('#btn-pet');
-  await expect(page.locator('#pet-bond')).toBeVisible();
-  const cap = await page.evaluate(() => window.PPConfig.BOND_XP.petCapPerDay);
-  for (let i = 0; i < cap + 3; i++) await page.click('#pet-sprite');
-  const afterPets = await page.evaluate(() => window.PP.state().bond.xp);
-  const perPet = await page.evaluate(() => window.PPConfig.BOND_XP.pet);
-  expect(afterPets).toBe(afterSolve + cap * perPet);
-
-  // XP only ever goes up, and the meter reflects the level.
-  await page.evaluate(() => window.PP._grantXp(1000));
-  await page.click('#pet-back');
-  await page.click('#btn-pet');
-  const level = await page.evaluate(() => window.PP.state().bond.level);
-  expect(level).toBeGreaterThan(1);
-  await expect(page.locator('#bond-level')).toHaveText(`Lv ${level}`);
-});
-
-test('a real award that crosses a threshold logs bond_level and raises the stored level', async ({ page }) => {
-  await page.goto('/');
-
-  // Onboard quickly.
   await page.click('#onb-welcome-go');
   await page.click('#species-cat');
   await page.click('#onb-choose-go');
   await page.click('#onb-name-go');
   await page.click('#onb-arrive-go');
 
+  // No visit XP in v2: a fresh pet starts at exactly zero.
+  expect(await page.evaluate(() => window.PP.state().pet.xp)).toBe(0);
+
+  // Petting responds but grants nothing.
   await page.click('#btn-pet');
-
-  // Sit one XP below a named tier's threshold, derived from config — never hardcoded.
-  const threshold = await page.evaluate(() => window.PPConfig.BOND_LEVELS[1].xp);
-  await page.evaluate((t) => {
-    const s = window.PP.state();
-    const need = t - 1 - s.bond.xp;
-    if (need > 0) window.PP._grantXp(need);
-  }, threshold);
-  const levelBefore = await page.evaluate(() => window.PP.state().bond.level);
-
-  // One real award via the app's own click handler — not _grantXp — so
-  // applyBond's level-up branch (the toast, the log, the endless-tier coin
-  // gift path) actually runs.
   await page.click('#pet-sprite');
+  await page.click('#pet-sprite');
+  expect(await page.evaluate(() => window.PP.state().pet.xp)).toBe(0);
+  const events = await page.evaluate(() => window.PP.state().events.map(e => e.type));
+  expect(events).toContain('petted');
+  await page.click('#pet-back');
 
-  const after = await page.evaluate(() => {
-    const s = window.PP.state();
-    return { events: s.events.map(e => e.type), level: s.bond.level };
-  });
-  expect(after.events).toContain('bond_level');
-  expect(after.level).toBeGreaterThan(levelBefore);
+  // Solving the easy opener grants exactly XP_PAYOUTS[0], shown on the win overlay.
+  await page.click('#slot-0');
+  await autosolve(page);
+  const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
+  await expect(page.locator('#win-xp-gain')).toHaveText(`+${perEasy} ✦`);
+  await continueWin(page);
+  expect(await page.evaluate(() => window.PP.state().pet.xp)).toBe(perEasy);
+
+  // One XP short of L2, then one real solve crosses it: level_up logged, chip updates.
+  const l2 = await page.evaluate(() => window.PPConfig.LEVEL_XP[0]);
+  await page.evaluate(xp => window.PP._grantXp(xp), l2 - perEasy - 1);
+  await page.click('#slot-1');   // medium, worth more than 1 XP
+  await autosolve(page);
+  await continueWin(page);
+  const s = await page.evaluate(() => window.PP.state());
+  expect(s.pet.levelHigh).toBeGreaterThanOrEqual(2);
+  expect(s.events.map(e => e.type)).toContain('level_up');
+  await expect(page.locator('#chip-level')).toHaveText(`Lv ${s.pet.levelHigh}`);
 });
 
-test('a v1 save migrates to v2 with a backfilled bond level', async ({ page }) => {
+test('a v1 save migrates to v3 with xp backfilled at the new values', async ({ page }) => {
   await page.goto('/');
-
-  // Seed a v1 save with real history, then reload so load() migrates it.
   await page.evaluate(() => {
     localStorage.clear();
     localStorage.setItem('puzzlepet.v1', JSON.stringify({
-      version: 1,
-      createdDay: '2026-06-01',
-      coins: 137,
+      version: 1, createdDay: '2026-06-01', coins: 137,
       pet: { species: 'fox', name: 'Pip', energy: 80, energyTs: Date.now() },
       lastActiveDay: '2026-06-20',
       days: { '2026-06-20': { slots: [true, true, false], bonus: false } },
-      owned: { ball: true, plant: true },
-      solves: 4,
-      removeAds: false,
+      owned: { ball: true, plant: true }, solves: 4, removeAds: false,
       events: [
         { type: 'pet_chosen', species: 'fox', name: 'Pip' },
         { type: 'puzzle_solved', kind: 'daily', slot: 0 },
@@ -251,29 +214,57 @@ test('a v1 save migrates to v2 with a backfilled bond level', async ({ page }) =
   });
   await page.reload();
 
-  // Straight to home — a migrated player is never re-onboarded.
+  // Straight to home — a migrated player is never re-onboarded, and a fox
+  // chosen before the roster shrank keeps their fox.
   await expect(page.locator('#screen-home')).toHaveClass(/active/);
   await expect(page.locator('#home-pet-name')).toHaveText('Pip');
 
   const s = await page.evaluate(() => window.PP.state());
-  expect(s.version).toBe(2);
-
-  // Backfill credited the logged solves and the feed.
-  const cfg = await page.evaluate(() => window.PPConfig.BOND_XP);
-  const backfilled = cfg.dailySolve[0] + cfg.dailySolve[1] + cfg.dailySolve[2] + cfg.feed.cake;
-  // exact: backfill from the event log + today's boot-time visit award
-  expect(s.bond.xp).toBe(backfilled + cfg.visit);
-  expect(s.bond.level).toBe(2);
-
-  // Nothing the player already had was disturbed.
+  const cfg = await page.evaluate(() => window.PPConfig);
+  const exact = cfg.XP_PAYOUTS[0] + cfg.XP_PAYOUTS[1] + cfg.XP_PAYOUTS[2]; // feed = 0, no bonus day
+  expect(s.version).toBe(3);
+  expect(s.pet.xp).toBe(exact);
+  expect(s.pet.levelHigh).toBe(2);            // 65 >= LEVEL_XP[0] (60)
   expect(s.coins).toBe(137);
   expect(s.owned.ball).toBe(true);
-  expect(s.owned.plant).toBe(true);
   expect(s.days['2026-06-20'].slots).toEqual([true, true, false]);
+  expect(s.events.map(e => e.type)).toContain('xp_backfill');
 
-  // Migration runs exactly once — a reload must not re-award the backfill.
-  const xpAfterFirst = s.bond.xp;
+  // Exactly once: a reload must not re-award.
   await page.reload();
-  const xpAfterSecond = await page.evaluate(() => window.PP.state().bond.xp);
-  expect(xpAfterSecond).toBe(xpAfterFirst);
+  expect(await page.evaluate(() => window.PP.state().pet.xp)).toBe(exact);
+});
+
+test('a v2 (bond) save migrates to v3, drops bond, and counts bonus days', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('puzzlepet.v2', JSON.stringify({
+      version: 2, createdDay: '2026-07-01', coins: 55,
+      pet: { species: 'dino', name: 'Pebble', energy: 60, energyTs: Date.now() },
+      bond: { xp: 31, level: 2, visitDay: '2026-07-20', pets: 5, petsDay: '2026-07-20' },
+      room: { wallpaper: 'plain', flooring: 'plain' },
+      lastActiveDay: '2026-07-20',
+      days: { '2026-07-20': { slots: [true, true, true], bonus: true } },
+      owned: {}, solves: 3, removeAds: false,
+      events: [
+        { type: 'pet_chosen', species: 'dino', name: 'Pebble' },
+        { type: 'puzzle_solved', kind: 'daily', slot: 0 },
+        { type: 'puzzle_solved', kind: 'daily', slot: 1 },
+        { type: 'puzzle_solved', kind: 'daily', slot: 2 },
+        { type: 'bond_visit', xp: 3 },
+        { type: 'bond_pet', xp: 1 }
+      ]
+    }));
+  });
+  await page.reload();
+
+  const s = await page.evaluate(() => window.PP.state());
+  const cfg = await page.evaluate(() => window.PPConfig);
+  const exact = cfg.XP_PAYOUTS[0] + cfg.XP_PAYOUTS[1] + cfg.XP_PAYOUTS[2] + cfg.XP_SET_BONUS;
+  expect(s.version).toBe(3);
+  expect(s.pet.xp).toBe(exact);               // old bond xp is NOT converted; history is replayed
+  expect(s.bond).toBeUndefined();
+  expect(s.coins).toBe(55);
+  expect(s.pet.name).toBe('Pebble');
 });
