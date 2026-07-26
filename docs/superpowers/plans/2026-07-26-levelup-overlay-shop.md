@@ -590,6 +590,16 @@ git commit -m "test(shop): gating e2e — visible, teased, collapsed, purchasabl
 
 ---
 
+## Known deferred items (as shipped)
+
+Triaged in the final whole-branch review; recorded here because the SDD scratch workspace is deleted after merge.
+
+- **`pet-back` hard-codes `screen-home`**, so a calendar back-fill player who takes the overlay's "See the shop" is relocated to home rather than back to the calendar. Pre-existing navigation, newly reachable via the overlay. Fix when plan 3 reworks the pet-room surface.
+- **The overlay merges per WIN, not per session** — spec §9's "one overlay per session" wording. Ruled better than the spec: each back-fill win gets its own Continue and its own moment; the merge branch still exists for a true double-cross, which is unreachable while max one-win XP (50) < the minimum threshold gap (60) — now guarded by a unit test that trips if tuning changes that.
+- **The ad-then-overlay ordering has no explicit assertion.** Ruled structurally guaranteed: the overlay call is the last line of the `maybeInterstitial` callback, which only runs after the ad's close handler; the core-loop e2e exercises the path on every 3rd solve and would hang if stacked.
+- crug's decor spot has a 4.4px margin (measured); widen when plan 3 rebuilds `DECO_SPOTS` per area.
+- The plan's Task 2 Step 4 prose says `_grantXp(70)` reaches Lv 3; it reaches Lv 2. Kept as-written — the ledger correction is the record; the executed code and tests used the true boundaries.
+
 ## Handoff
 
 - **Plan 3 (room areas)** consumes: `AREAS` config (already shaped), the catalog's `area` fields, and replaces `DECO_SPOTS` with per-area maps. It extends `unlocksFor` with area lines ("🏡 Garden") and regroups the shop by area once ≥2 areas are unlocked. The collapsed `#shop-more` line is where hidden-area items graduate from.
