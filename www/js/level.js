@@ -55,7 +55,24 @@
     }
   }
 
-  const PPLevel = { get CAP() { return CAP_OF(); }, thresholdFor, levelForXp, displayLevel, xpFor };
+  // Recomputes lifetime XP from history so an existing save arrives at the
+  // level it already earned. Two sources: puzzle_solved events (per solve),
+  // and days[*].bonus (the set bonus was never logged as an event, but the
+  // days map persists it). Deliberately under-credits — the event log is
+  // capped at 5000 entries. Never hand a player a level they didn't earn.
+  function backfill(events, days) {
+    let xp = 0;
+    (events || []).forEach(e => {
+      if (!e || e.type !== 'puzzle_solved') return;
+      xp += e.kind === 'daily' ? xpFor('daily', { slot: e.slot }) : xpFor('freeplay');
+    });
+    Object.keys(days || {}).forEach(d => {
+      if (days[d] && days[d].bonus) xp += xpFor('setBonus');
+    });
+    return xp;
+  }
+
+  const PPLevel = { get CAP() { return CAP_OF(); }, thresholdFor, levelForXp, displayLevel, xpFor, backfill };
   if (typeof module !== 'undefined' && module.exports) module.exports = PPLevel;
   global.PPLevel = PPLevel;
 })(typeof window !== 'undefined' ? window : globalThis);

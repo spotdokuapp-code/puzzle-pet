@@ -57,5 +57,33 @@ check(PPLevel.xpFor('pet') === 0, 'petting grants no XP');
 check(PPLevel.xpFor('daily', { slot: 99 }) === 0, 'bad slot is 0, not undefined');
 check(PPLevel.xpFor('nonsense') === 0, 'unknown source is 0, not NaN');
 
+// --- backfill: replay events at the NEW values; +setBonus per bonus day ---
+const history = [
+  { type: 'pet_chosen', species: 'cat', name: 'Mochi' },
+  { type: 'puzzle_solved', kind: 'daily', slot: 0 },
+  { type: 'puzzle_solved', kind: 'daily', slot: 1 },
+  { type: 'puzzle_solved', kind: 'daily', slot: 2 },
+  { type: 'puzzle_solved', kind: 'free' },
+  { type: 'feed', item: 'cake' },          // no XP in v2
+  { type: 'bond_visit', xp: 3 },           // legacy v2-save event: ignored
+  { type: 'bond_pet', xp: 1 },             // legacy v2-save event: ignored
+  { type: 'buy_permanent', item: 'ball' }
+];
+const daysMap = {
+  '2026-06-20': { slots: [true, true, true], bonus: true },
+  '2026-06-21': { slots: [true, false, false], bonus: false }
+};
+const expected = C.XP_PAYOUTS[0] + C.XP_PAYOUTS[1] + C.XP_PAYOUTS[2]
+               + C.XP_FREEPLAY + C.XP_SET_BONUS;
+check(PPLevel.backfill(history, daysMap) === expected, `backfill totals ${expected}`);
+
+// Defensive: malformed inputs must not throw or produce NaN.
+check(PPLevel.backfill([], {}) === 0, 'empty history is 0');
+check(PPLevel.backfill(undefined, undefined) === 0, 'missing history is 0');
+check(PPLevel.backfill([{ type: 'puzzle_solved', kind: 'daily' }], {}) === 0,
+  'daily solve with no slot is 0, not NaN');
+check(PPLevel.backfill([null, { type: 'feed' }], { x: null }) === 0,
+  'null entries are skipped');
+
 if (failures) { console.error(`${failures} failure(s)`); process.exit(1); }
 console.log('level tests: all passed');
