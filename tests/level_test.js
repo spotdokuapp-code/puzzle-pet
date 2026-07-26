@@ -77,13 +77,25 @@ const expected = C.XP_PAYOUTS[0] + C.XP_PAYOUTS[1] + C.XP_PAYOUTS[2]
                + C.XP_FREEPLAY + C.XP_SET_BONUS;
 check(PPLevel.backfill(history, daysMap) === expected, `backfill totals ${expected}`);
 
-// Defensive: malformed inputs must not throw or produce NaN.
+// Defensive: malformed, missing, and typo'd inputs must not throw or produce NaN.
 check(PPLevel.backfill([], {}) === 0, 'empty history is 0');
 check(PPLevel.backfill(undefined, undefined) === 0, 'missing history is 0');
 check(PPLevel.backfill([{ type: 'puzzle_solved', kind: 'daily' }], {}) === 0,
   'daily solve with no slot is 0, not NaN');
 check(PPLevel.backfill([null, { type: 'feed' }], { x: null }) === 0,
   'null entries are skipped');
+
+// --- strict allow-list for puzzle_solved.kind ---
+check(PPLevel.backfill([{ type: 'puzzle_solved' }], {}) === 0,
+  'puzzle_solved with missing kind is 0');
+check(PPLevel.backfill([{ type: 'puzzle_solved', kind: 'dialy' }], {}) === 0,
+  'puzzle_solved with typo\'d kind is 0');
+check(PPLevel.backfill([{ type: 'puzzle_solved', kind: 'free' }], {}) === C.XP_FREEPLAY,
+  'puzzle_solved with kind "free" credits freeplay');
+
+// --- non-array/non-object inputs don't throw ---
+check(PPLevel.backfill({}, {}) === 0, 'object events arg doesn\'t throw');
+check(PPLevel.backfill('oops', 'oops') === 0, 'string events/days args don\'t throw');
 
 if (failures) { console.error(`${failures} failure(s)`); process.exit(1); }
 console.log('level tests: all passed');

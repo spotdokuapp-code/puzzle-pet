@@ -56,18 +56,27 @@
   }
 
   // Recomputes lifetime XP from history so an existing save arrives at the
-  // level it already earned. Two sources: puzzle_solved events (per solve),
-  // and days[*].bonus (the set bonus was never logged as an event, but the
-  // days map persists it). Deliberately under-credits — the event log is
-  // capped at 5000 entries. Never hand a player a level they didn't earn.
+  // level it already earned. Two sources: puzzle_solved events (per solve,
+  // kind must be 'daily' or 'free'), and days[*].bonus (the set bonus was
+  // never logged as an event, but the days map persists it). Deliberately
+  // under-credits — the event log is capped at 5000 entries. Never hand a
+  // player a level they didn't earn. Defensively handles non-arrays and
+  // non-objects without throwing.
   function backfill(events, days) {
     let xp = 0;
-    (events || []).forEach(e => {
-      if (!e || e.type !== 'puzzle_solved') return;
-      xp += e.kind === 'daily' ? xpFor('daily', { slot: e.slot }) : xpFor('freeplay');
-    });
-    Object.keys(days || {}).forEach(d => {
-      if (days[d] && days[d].bonus) xp += xpFor('setBonus');
+    if (Array.isArray(events)) {
+      events.forEach(e => {
+        if (!e || e.type !== 'puzzle_solved') return;
+        if (e.kind === 'daily') {
+          xp += xpFor('daily', { slot: e.slot });
+        } else if (e.kind === 'free') {
+          xp += xpFor('freeplay');
+        }
+      });
+    }
+    const daysObj = (days && typeof days === 'object') ? days : {};
+    Object.keys(daysObj).forEach(d => {
+      if (daysObj[d] && daysObj[d].bonus) xp += xpFor('setBonus');
     });
     return xp;
   }
