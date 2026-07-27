@@ -556,6 +556,18 @@ git commit -m "test(areas): panels, per-area decor, grouped shop, leveled title"
 
 ---
 
+## Known deferred items (as shipped)
+
+Triaged in the final whole-branch review; recorded here because the SDD scratch workspace is deleted after merge.
+
+- **Parked (corrupt-save-only):** an owned item in a still-locked area gets a shop row (owned-never-hidden, fixed in the wave) — but once ≥2 real areas are unlocked, its group header names the locked area. Unreachable in normal play (`displayLevel` ratchets; only a config level-raise or tampered save produces it), and the area name already ships in `config.js`. Revisit if `AREAS[].level` values are ever raised post-launch.
+- **Parked (cosmetic):** at Lv 1 the single 92%-wide panel leaves an 8% cream sliver at the scene's right edge (body background showing through). Reads as tone-on-tone; fix by giving `.scene` a background if it ever bothers anyone.
+- Sparkle is fragile to a re-render inside its 1.3s window (destroyed with the panel) — cosmetic, accepted.
+- L6–L9 "See the shop" lands at the top of the pet screen without scrolling to the shop — pre-existing plan-2 behavior, newly conspicuous next to its scrolling sibling CTA. Candidate polish for plan 4.
+- **Plan 4 must decide CTA precedence at L30**: `newArea` currently wins unconditionally, so the alien's species row would list under a "Visit the room" button. Extend `unlocksFor`'s return with `newSpecies` and pick the order deliberately.
+- WKWebView (iOS) pass at go-live bucket 3 should cover: scroll position across rebuilds, the scrollLeft reset, and scroll-snap behavior — all Chromium-verified only.
+- `pet-back` → calendar return path and the migrated-save room render have no e2e (code-traced only).
+
 ## Handoff to plan 4
 
 - Species unlocks: `SPECIES_UNLOCKS` config, the overlay's species variant ("Meet them" CTA — extend `unlocksFor`'s return with a `newSpecies` field), retroactive `species_unlocked` from level history, the friends switcher, and spec §4's onboarding remainder (owner-assigned).
