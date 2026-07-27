@@ -409,17 +409,6 @@
   $('cal-next').addEventListener('click', () => { calM++; if (calM > 11) { calM = 0; calY++; } renderCalendar(); });
 
   // ---------- pet room ----------
-  const DECO_SPOTS = {
-    ball:   'left:12%; bottom:12px;',
-    plant:  'right:10%; bottom:14px;',
-    lamp:   'left:7%;  top:34%;',
-    rug:    'right:26%; bottom:6px;',
-    poster: 'right:8%; top:12%;',
-    bowl:   'left:24%; top:56%;',
-    shelf:  'right:6%; top:30%;',
-    tent:   'left:22%; bottom:8px;',
-    crug:   'right:18%; bottom:2px;'
-  };
   function renderLevel() {
     const lv = PPLevel.displayLevel(S.pet);
     const info = PPLevel.levelForXp(S.pet.xp);
@@ -438,16 +427,34 @@
   }
   function renderPet(bounce) {
     $('chip-coins-pet').textContent = `🪙 ${S.coins}`;
-    const scene = $('scene');
-    scene.querySelectorAll('.deco').forEach(e => e.remove());
+    const lvNowScene = PPLevel.displayLevel(S.pet);
+    const strip = $('scene-strip');
+    // Build one panel per UNLOCKED area; locked areas do not exist in the
+    // DOM at all — no doors, no silhouettes. Main's panel is static.
+    strip.querySelectorAll('.area:not(.area-main)').forEach(e => e.remove());
+    C.AREAS.filter(a => a.id !== 'main' && a.level <= lvNowScene).forEach(a => {
+      const panel = document.createElement('div');
+      panel.className = `area area-${a.id}`;
+      panel.id = `area-${a.id}`;
+      const label = document.createElement('div');
+      label.className = 'area-label';
+      label.textContent = a.name;
+      panel.appendChild(label);
+      strip.appendChild(panel);
+    });
+    strip.querySelectorAll('.deco').forEach(e => e.remove());
     Object.keys(S.owned).forEach(id => {
       const item = C.PERMANENTS.find(p => p.id === id);
       if (!item) return;
+      // Owned is never hidden: if the item's panel is missing (corrupt
+      // save), it falls back to the main panel rather than vanishing.
+      const host = $(`area-${item.area}`) || $('area-main');
+      const spots = C.DECO_SPOTS[item.area] || {};
       const el = document.createElement('div');
       el.className = 'deco';
-      el.style.cssText = DECO_SPOTS[id] || 'left:20%; bottom:10px;';
+      el.style.cssText = spots[id] || 'left:20%; bottom:10px;';
       el.textContent = item.emoji;
-      scene.appendChild(el);
+      host.appendChild(el);
     });
     const spriteEl = $('pet-sprite');
     spriteEl.innerHTML = PPSprites.svg(S.pet.species, mood(), 110);
