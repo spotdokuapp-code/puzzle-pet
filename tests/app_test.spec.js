@@ -52,6 +52,7 @@ test('full core loop', async ({ page }) => {
   await page.click('#onb-name-go');
 
   await expect(page.locator('#screen-home')).toHaveClass(/active/);
+  await expect(page.locator('#chip-level')).toHaveText('Lv 1');
   await expect(page.locator('#home-pet-name')).toHaveText('Pip');
   await expect(page.locator('#toast')).toHaveClass(/show/);
   await expect(page.locator('#toast')).toContainText("make Pip's day");
@@ -532,4 +533,77 @@ test('a save already past milestones gets quiet retroactive unlocks', async ({ p
   await page.click('#settings-friends');
   await expect(page.locator('.friend-card')).toHaveCount(5);
   await expect(page.locator('#friend-alien')).toHaveCount(0);
+});
+
+test('a friend once met is never lost, even below their own milestone', async ({ page }) => {
+  // Migrate a v1 save whose companion is a fox — a species onboarding no
+  // longer offers and whose own milestone (L18) the migrated level (L2)
+  // hasn't reached. Nothing should be lost by having ever met them.
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('puzzlepet.v1', JSON.stringify({
+      version: 1, createdDay: '2026-06-01', coins: 137,
+      pet: { species: 'fox', name: 'Pip', energy: 80, energyTs: Date.now() },
+      lastActiveDay: '2026-06-20',
+      days: { '2026-06-20': { slots: [true, true, false], bonus: false } },
+      owned: { ball: true, plant: true }, solves: 4, removeAds: false,
+      events: [
+        { type: 'pet_chosen', species: 'fox', name: 'Pip' },
+        { type: 'puzzle_solved', kind: 'daily', slot: 0 },
+        { type: 'puzzle_solved', kind: 'daily', slot: 1 },
+        { type: 'puzzle_solved', kind: 'daily', slot: 2 },
+        { type: 'feed', item: 'cake' }
+      ]
+    }));
+  });
+  await page.reload();
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);
+  const migratedLevel = await page.evaluate(() => window.PP.state().pet.levelHigh);
+  expect(migratedLevel).toBeLessThan(18);   // below fox's own milestone
+
+  // Switch away to dog, a below-milestone starter — the fox is no longer
+  // the current companion and its own level milestone is still unmet.
+  await page.click('#btn-settings');
+  await page.click('#settings-friends');
+  await page.click('#friend-dog');
+  await page.click('#friend-invite');
+  await expect(page.locator('#toast')).toContainText('is moving in');
+  await expect(page.locator('#home-pet-name')).toHaveText('Biscuit');
+
+  // Reopen the switcher: the fox — met before — is still there, and it
+  // is genuinely invitable, not a dead card.
+  await page.click('#btn-settings');
+  await page.click('#settings-friends');
+  await expect(page.locator('#friend-fox')).toBeVisible();
+  await page.click('#friend-fox');
+  await expect(page.locator('#friend-confirm')).toBeVisible();
+  await page.click('#friend-invite');
+  const s = await page.evaluate(() => window.PP.state());
+  expect(s.pet.species).toBe('fox');
+});
+
+test('crossing a milestone never invites the current companion', async ({ page }) => {
+  await onboard(page, 'cat', 'Mochi');
+
+  // State-seed a migrated/switched fox owner: fox is already the companion,
+  // so fox's own milestone crossing must never be offered as an invite.
+  await page.evaluate(() => {
+    const s = window.PP.state();
+    s.pet.species = 'fox';
+    s.events.push({ type: 'pet_chosen', species: 'fox' });
+  });
+
+  const l18 = await page.evaluate(() => window.PPConfig.LEVEL_XP[16]);
+  const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
+  await page.evaluate(xp => window.PP._grantXp(xp), l18 - perEasy);
+
+  await page.click('#slot-0');
+  await autosolve(page);
+  await continueWin(page);
+
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-title')).toContainText('Level 18');
+  await expect(page.locator('#levelup-list')).not.toContainText('would love to move in');
+  await expect(page.locator('#levelup-cta')).toHaveText('See the shop');
 });
