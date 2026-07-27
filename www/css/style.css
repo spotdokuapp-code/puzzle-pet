@@ -284,6 +284,10 @@ body {
 /* Shop gating */
 .item-btn.locked { opacity: .55; }
 .item-btn.locked .pr { color: var(--ink-soft); font-weight: 700; font-size: .72rem; }
+.shop-area-head {
+  flex: 1 1 100%; font-size: .78rem; font-weight: 800; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: .04em; margin: 6px 0 -2px;
+}
 .shop-more {
   flex: 1 1 100%; text-align: center; color: var(--ink-soft);
   font-size: .8rem; font-style: italic; padding: 6px 0 2px;

@@ -495,44 +495,56 @@
     const pr = $('permanents-row');
     pr.innerHTML = '';
     const lvNow = PPLevel.displayLevel(S.pet);
-    const mains = C.PERMANENTS.filter(p => p.area === 'main');
-    // Owned items are never hidden, whatever their level — a migrated save
-    // may own above its backfilled level. Unowned items show at or below
-    // the current level; the single next locked main tier is teased; all
-    // deeper content collapses to one line (no item-by-item teasing).
-    const visible = mains.filter(p => p.level <= lvNow || S.owned[p.id]);
-    const nextLocked = mains.filter(p => p.level > lvNow && !S.owned[p.id]);
+    const unlockedAreas = C.AREAS.filter(a => a.level <= lvNow).map(a => a.id);
+    const inUnlocked = C.PERMANENTS.filter(p => unlockedAreas.includes(p.area));
+    // Owned is never hidden; otherwise an item shows once its level is
+    // reached (its area is unlocked by then — catalog invariant, tested).
+    const visible = inUnlocked.filter(p => p.level <= lvNow || S.owned[p.id]);
+    const nextLocked = inUnlocked.filter(p => p.level > lvNow && !S.owned[p.id]);
     const nextLevel = nextLocked.length ? nextLocked[0].level : null;
     const teaseInRange = nextLevel !== null && (nextLevel - lvNow) <= C.SHOP_TEASE_RANGE;
     const teased = teaseInRange ? nextLocked.filter(p => p.level === nextLevel) : [];
+    const grouping = unlockedAreas.length >= 2;
 
-    visible.forEach(item => {
+    const renderRow = (item, locked) => {
       const owned = !!S.owned[item.id];
       const b = document.createElement('button');
-      b.className = 'item-btn' + (owned ? ' owned' : '');
       b.id = `shop-${item.id}`;
-      b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
-        `<span class="pr">${owned ? 'in room ✓' : item.price + ' 🪙'}</span>`;
-      b.disabled = owned || S.coins < item.price;
-      if (!owned) b.addEventListener('click', () => {
-        S.coins -= item.price;
-        S.owned[item.id] = true;
-        touch();
-        log('buy_permanent', { item: item.id, cost: item.price });
-        toast(`${item.name} added to the room! ${item.emoji}`);
-        renderPet(true);
-      });
+      if (locked) {
+        b.className = 'item-btn locked';
+        b.disabled = true;
+        b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
+          `<span class="pr">Unlocks at Lv ${item.level} ✨</span>`;
+      } else {
+        b.className = 'item-btn' + (owned ? ' owned' : '');
+        b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
+          `<span class="pr">${owned ? 'in room ✓' : item.price + ' 🪙'}</span>`;
+        b.disabled = owned || S.coins < item.price;
+        if (!owned) b.addEventListener('click', () => {
+          S.coins -= item.price;
+          S.owned[item.id] = true;
+          touch();
+          log('buy_permanent', { item: item.id, cost: item.price });
+          toast(`${item.name} added to the room! ${item.emoji}`);
+          renderPet(true);
+        });
+      }
       pr.appendChild(b);
-    });
+    };
 
-    teased.forEach(item => {
-      const b = document.createElement('button');
-      b.className = 'item-btn locked';
-      b.id = `shop-${item.id}`;
-      b.disabled = true;
-      b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
-        `<span class="pr">Unlocks at Lv ${item.level} ✨</span>`;
-      pr.appendChild(b);
+    C.AREAS.forEach(a => {
+      const rows = [
+        ...visible.filter(p => p.area === a.id).map(p => [p, false]),
+        ...teased.filter(p => p.area === a.id).map(p => [p, true])
+      ];
+      if (!rows.length) return;
+      if (grouping) {
+        const head = document.createElement('div');
+        head.className = 'shop-area-head';
+        head.textContent = a.name;
+        pr.appendChild(head);
+      }
+      rows.forEach(([item, locked]) => renderRow(item, locked));
     });
 
     // Anything beyond the teased tier — deeper main levels and every unbuilt
