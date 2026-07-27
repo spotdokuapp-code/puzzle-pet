@@ -255,7 +255,12 @@ body {
   color: var(--ink-soft); font-size: .86rem; font-style: italic;
   margin: 0 0 6px; min-height: 1.2em;
 }
-.arrive-scene { margin-bottom: 12px; }
+.species-grid.choose-two { grid-template-columns: repeat(2, 1fr); }
+.species-grid.choose-two .species-btn { padding: 14px 8px 10px; }
+.species-grid.choose-two .blurb {
+  display: block; font-size: .7rem; color: var(--ink-soft); font-weight: 600;
+  margin-top: 4px; min-height: 2.4em;
+}
 
 /* Level meter */
 .level-meter { margin-top: 10px; }

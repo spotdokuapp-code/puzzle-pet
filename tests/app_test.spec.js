@@ -17,21 +17,30 @@ async function autosolve(page) {
   await page.evaluate(() => window.PP.game._autosolve());
 }
 
+async function onboard(page, species = 'dog', name) {
+  await page.goto('/');
+  await page.click('#onb-hello-go');
+  await page.click(`#species-${species}`);
+  await page.click('#onb-choose-go');
+  if (name) await page.fill('#pet-name-input', name);
+  await page.click('#onb-name-go');
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);
+}
+
 test('full core loop', async ({ page }) => {
   await page.goto('/');
 
-  // --- Onboarding: welcome → meet → name → arrive ---
+  // --- Welcome cycle: hello → choose → name ---
   await expect(page.locator('#screen-onboard')).toHaveClass(/active/);
-  await expect(page.locator('#onb-welcome')).toHaveClass(/active/);
-  await page.click('#onb-welcome-go');
+  await expect(page.locator('#onb-hello')).toHaveClass(/active/);
+  await page.click('#onb-hello-go');
 
-  // Tapping previews only; a separate button commits, because species is permanent.
+  // Tapping selects only; a separate button commits, because species is permanent.
   await expect(page.locator('#onb-choose')).toHaveClass(/active/);
   await expect(page.locator('#onb-choose-go')).toBeDisabled();
   const speciesShown = await page.locator('.species-btn').count();
   expect(speciesShown).toBe(2);
   await page.click('#species-dog');
-  await expect(page.locator('#onb-blurb')).not.toHaveText('');
   await page.click('#species-cat');            // browsing is safe
   await page.click('#species-dog');            // and reversible
   await expect(page.locator('#onb-choose-go')).toBeEnabled();
@@ -42,12 +51,10 @@ test('full core loop', async ({ page }) => {
   await page.fill('#pet-name-input', 'Pip');
   await page.click('#onb-name-go');
 
-  await expect(page.locator('#onb-arrive')).toHaveClass(/active/);
-  await expect(page.locator('#onb-speech')).toContainText('Pip');
-  await page.click('#onb-arrive-go');
-
   await expect(page.locator('#screen-home')).toHaveClass(/active/);
   await expect(page.locator('#home-pet-name')).toHaveText('Pip');
+  await expect(page.locator('#toast')).toHaveClass(/show/);
+  await expect(page.locator('#toast')).toContainText("make Pip's day");
 
   // --- Daily slots: medium locked until easy done ---
   await expect(page.locator('#slot-1')).toHaveClass(/locked/);
@@ -165,12 +172,7 @@ test('daily puzzles are deterministic for a given date', async ({ page }) => {
 });
 
 test('xp comes from solving only, and levels ratchet up', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-cat');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'cat');
 
   // No visit XP in v2: a fresh pet starts at exactly zero.
   expect(await page.evaluate(() => window.PP.state().pet.xp)).toBe(0);
@@ -316,12 +318,7 @@ test('a v2 (bond) save migrates to v3, drops bond, and counts bonus days', async
 });
 
 test('the shop gates by level: visible tier, one teased tier, quiet collapse', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-dog');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'dog');
 
   await page.click('#btn-pet');
   // Lv 1: ball + plant purchasable; lamp + rug teased as the next tier;
@@ -356,12 +353,7 @@ test('the shop gates by level: visible tier, one teased tier, quiet collapse', a
 });
 
 test('an owned item in a still-locked area keeps its shop row', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-dog');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'dog');
 
   // koi (pond, unlocks at Lv 20) owned at Lv 1 — a corrupt-save or
   // future-config-raise scenario. Owned is never hidden: it must still
@@ -373,12 +365,7 @@ test('an owned item in a still-locked area keeps its shop row', async ({ page })
 });
 
 test('crossing an area level headlines the area and visits the room', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-cat');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'cat');
 
   // Sit one easy-solve below the L4→L5 threshold. L5 unlocks the nook area
   // (plus its two level-5 items): the overlay must headline the area, not
@@ -414,12 +401,7 @@ test('crossing an area level headlines the area and visits the room', async ({ p
 });
 
 test('a crossing with nothing new falls back warmly', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-cat');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'cat');
 
   // Pre-own the L6 unlock (toychest is the only thing that unlocks at L6,
   // and the nook area is already open by then), so this crossing is
@@ -445,12 +427,7 @@ test('a crossing with nothing new falls back warmly', async ({ page }) => {
 });
 
 test('areas unlock as panels, decor lands in its area, shop groups', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-cat');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'cat');
 
   // Lv 1: only the main panel exists — locked areas are absent, not teased.
   await page.click('#btn-pet');
@@ -480,12 +457,7 @@ test('areas unlock as panels, decor lands in its area, shop groups', async ({ pa
 });
 
 test('late game: every area and every catalog item is in the room by Lv 30', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-cat');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'cat');
 
   await page.evaluate(() => window.PP._grantXp(window.PPConfig.LEVEL_XP[28]));  // L30
   await page.click('#btn-pet');

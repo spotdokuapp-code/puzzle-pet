@@ -631,10 +631,9 @@
     show(dest);
   });
 
-  // ---------- onboarding: welcome → meet → name → arrive ----------
-  // Species is written once at the "meet" beat and never again. Tapping a
-  // creature only previews it; a separate button commits. That matters because
-  // the choice is permanent, so a mis-tap must never decide it.
+  // ---------- welcome cycle: hello → choose → name ----------
+  // Two large cards with blurbs inline; tap selects, the CTA commits —
+  // a mis-tap never decides. Lands on Home with the first-day toast.
   let selSpecies = null;
 
   // Queued level-up crossing, shown after the win overlay's Continue and any
@@ -657,25 +656,23 @@
       const b = document.createElement('button');
       b.className = 'species-btn';
       b.id = `species-${sp}`;
-      b.innerHTML = PPSprites.svg(sp, 'happy', 62) + `<span class="nm">${sp}</span>`;
+      b.innerHTML = PPSprites.svg(sp, 'happy', 72) +
+        `<span class="nm">${sp}</span>` +
+        `<span class="blurb">${C.SPECIES_BLURBS[sp]}</span>`;
       b.addEventListener('click', () => {
         selSpecies = sp;
         grid.querySelectorAll('.species-btn').forEach(x => x.classList.remove('sel'));
         b.classList.add('sel');
-        $('onb-preview').innerHTML = PPSprites.svg(sp, 'happy', 84);
-        $('onb-blurb').textContent = C.SPECIES_BLURBS[sp];
         $('onb-choose-go').disabled = false;
       });
       grid.appendChild(b);
     });
-    $('onb-preview').innerHTML = '';
-    $('onb-blurb').innerHTML = '&nbsp;';
     $('onb-choose-go').disabled = true;
     $('pet-name-input').value = '';
-    onbStep('onb-welcome');
+    onbStep('onb-hello');
   }
 
-  $('onb-welcome-go').addEventListener('click', () => onbStep('onb-choose'));
+  $('onb-hello-go').addEventListener('click', () => onbStep('onb-choose'));
 
   $('onb-choose-go').addEventListener('click', () => {
     if (!selSpecies) return;
@@ -690,16 +687,10 @@
     S.pet.name = ($('pet-name-input').value.trim() || C.DEFAULT_NAMES[selSpecies]).slice(0, 14);
     touch();
     log('pet_chosen', { species: S.pet.species, name: S.pet.name });
-    const arriveSprite = $('onb-arrive-sprite');
-    arriveSprite.innerHTML = PPSprites.svg(S.pet.species, 'happy', 110);
-    arriveSprite.classList.add('bounce');
-    $('onb-speech').textContent = moodText();
-    onbStep('onb-arrive');
-  });
-
-  $('onb-arrive-go').addEventListener('click', () => {
+    grantSpeciesUnlocks();
     renderHome();
     show('screen-home');
+    toast(`Solve today's Easy puzzle to make ${S.pet.name}'s day 💛`, 4000);
   });
 
   // ---------- settings ----------
