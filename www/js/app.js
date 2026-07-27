@@ -697,6 +697,56 @@
     if ($('screen-pet').classList.contains('active')) renderPet();
     toast(`Say hello to ${next}! 💛`);
   });
+
+  // ---------- friends switcher: the roster grows with the level ----------
+  let inviteSpecies = null;
+  function openFriends() {
+    inviteSpecies = null;
+    $('friend-confirm').style.display = 'none';
+    const list = $('friends-list');
+    list.innerHTML = '';
+    PPLevel.unlockedSpecies(S.pet).forEach(sp => {
+      const isCurrent = sp === S.pet.species;
+      const card = document.createElement('button');
+      card.className = 'friend-card' + (isCurrent ? ' current' : '');
+      card.id = `friend-${sp}`;
+      card.innerHTML = PPSprites.svg(sp, 'happy', 56) +
+        `<span class="nm">${sp}</span>` +
+        (isCurrent ? '<span class="st">with you now</span>' : '');
+      if (!isCurrent) card.addEventListener('click', () => {
+        inviteSpecies = sp;
+        $('friend-confirm-sprite').innerHTML = PPSprites.svg(sp, 'happy', 84);
+        $('friend-name-input').value = C.DEFAULT_NAMES[sp];
+        $('friend-confirm').style.display = '';
+      });
+      list.appendChild(card);
+    });
+    overlay('overlay-friends', true);
+  }
+  $('settings-friends').addEventListener('click', () => {
+    overlay('overlay-settings', false);
+    openFriends();
+  });
+  $('friends-close').addEventListener('click', () => overlay('overlay-friends', false));
+  $('friend-cancel').addEventListener('click', () => {
+    inviteSpecies = null;
+    $('friend-confirm').style.display = 'none';
+  });
+  $('friend-invite').addEventListener('click', () => {
+    if (!inviteSpecies) return;
+    const from = S.pet.species;
+    const oldName = S.pet.name;
+    // Only the companion changes. Level, xp, room, coins, streak — untouched.
+    S.pet.species = inviteSpecies;
+    S.pet.name = ($('friend-name-input').value.trim() || oldName).slice(0, 14);
+    touch();
+    log('pet_changed', { from, to: S.pet.species, name: S.pet.name });
+    overlay('overlay-friends', false);
+    toast(`${oldName} waves happily — ${S.pet.name} is moving in! 🎉`, 3500);
+    renderHome();
+    if ($('screen-pet').classList.contains('active')) renderPet(true);
+  });
+
   let resetArmed = false;
   $('settings-reset').addEventListener('click', () => {
     if (!resetArmed) {

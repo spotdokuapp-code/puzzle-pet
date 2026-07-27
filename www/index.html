@@ -217,6 +217,7 @@
     <h3>Settings</h3>
     <div class="opt-col">
       <button class="primary-btn" id="settings-removeads">Remove ads (coming soon)</button>
+      <button class="ghost-btn" id="settings-friends">Your friends</button>
       <button class="ghost-btn" id="settings-rename">Rename pal</button>
       <button class="ghost-btn" id="settings-reset" style="color:var(--danger)">Start over (erase data)</button>
       <button class="ghost-btn" id="settings-close">Close</button>
@@ -233,6 +234,23 @@
       <button class="primary-btn" id="rename-save">Save</button>
       <button class="ghost-btn" id="rename-cancel">Cancel</button>
     </div>
+  </div>
+</div>
+
+<!-- Friends switcher: unlocked species only; switching keeps level, xp,
+     room, coins, streak. The departing friend is never sad. -->
+<div class="overlay" id="overlay-friends">
+  <div class="modal">
+    <h3>Your friends</h3>
+    <div class="friends-list" id="friends-list"></div>
+    <div class="friend-confirm" id="friend-confirm" style="display:none">
+      <div class="onboard-preview" id="friend-confirm-sprite"></div>
+      <p class="subtle">What will you call them? (Keeping a name is lovely too.)</p>
+      <input class="name-input" id="friend-name-input" maxlength="14">
+      <button class="primary-btn" id="friend-invite">Invite them in</button>
+      <button class="ghost-btn" id="friend-cancel">Not now</button>
+    </div>
+    <button class="ghost-btn" id="friends-close">Close</button>
   </div>
 </div>
 
