@@ -420,3 +420,38 @@ test('a crossing with nothing new falls back warmly', async ({ page }) => {
   await expect(page.locator('#overlay-levelup')).not.toHaveClass(/show/);
   await expect(page.locator('#screen-home')).toHaveClass(/active/);   // dest 'stay': no navigation
 });
+
+test('areas unlock as panels, decor lands in its area, shop groups', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-cat');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  // Lv 1: only the main panel exists — locked areas are absent, not teased.
+  await page.click('#btn-pet');
+  await expect(page.locator('.area')).toHaveCount(1);
+  await expect(page.locator('#area-nook')).toHaveCount(0);
+  await expect(page.locator('.shop-area-head')).toHaveCount(0);   // one area → no headers
+
+  // Reach Lv 5: the nook panel appears with its label; shop grows headers.
+  await page.evaluate(() => window.PP._grantXp(window.PPConfig.LEVEL_XP[3]));  // 430 → Lv 5
+  await page.click('#pet-back');
+  await page.click('#btn-pet');
+  await expect(page.locator('#area-nook')).toHaveCount(1);
+  await expect(page.locator('#area-nook .area-label')).toHaveText('Window nook');
+  await expect(page.locator('#area-garden')).toHaveCount(0);      // still locked, still absent
+  await expect(page.locator('.shop-area-head')).toHaveCount(2);   // Home + Window nook
+
+  // Buy a nook item: the decor lands in the nook panel, not main.
+  await page.evaluate(() => window.PP._grant(400));
+  await page.click('#pet-back');
+  await page.click('#btn-pet');
+  await page.click('#shop-cushion');
+  await expect(page.locator('#area-nook .deco')).toHaveCount(1);
+  await expect(page.locator('#area-main .deco')).toHaveCount(0);
+
+  // The pet-room title carries the level.
+  await expect(page.locator('#pet-title')).toContainText('· Lv 5');
+});

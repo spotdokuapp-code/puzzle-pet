@@ -5,7 +5,7 @@ Cozy iOS game: daily Star Battle-style logic puzzles earn coins to care for a sm
 ## Layout
 
 - `www/index.html` — single page, all screens as `<section class="screen">`
-- `www/js/config.js` — ALL tunable numbers (economy, energy, ad cadence). Tune here, nowhere else — includes the 37-item level/area catalog (AREAS + PERMANENTS)
+- `www/js/config.js` — ALL tunable numbers (economy, energy, ad cadence). Tune here, nowhere else — includes the 37-item level/area catalog (AREAS + PERMANENTS); room areas + per-area decor spots (AREAS/DECO_SPOTS)
 - `www/js/generator.js` — Star Battle generator/solver (seeded RNG, uniqueness-verified, difficulty by solver node count). Also loads in Node for tests.
 - `www/js/storage.js` — localStorage `puzzlepet.v3`, in-memory fallback, append-only event log
 - `www/js/level.js` — XP curve/level math (pure, Node-loadable)
