@@ -251,10 +251,6 @@ body {
   background: #fdf9f2; border: 1px solid var(--soft-line); border-radius: 16px;
   margin: 10px 0 8px; padding: 8px;
 }
-.onboard-blurb {
-  color: var(--ink-soft); font-size: .86rem; font-style: italic;
-  margin: 0 0 6px; min-height: 1.2em;
-}
 .species-grid.choose-two { grid-template-columns: repeat(2, 1fr); }
 .species-grid.choose-two .species-btn { padding: 14px 8px 10px; }
 .species-grid.choose-two .blurb {
