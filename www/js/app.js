@@ -117,12 +117,19 @@
     return gained;
   }
 
-  // Main-area unlocks between two levels, as display strings. Plan 3 adds
-  // area lines here; plan 4 adds species lines.
+  // Everything a crossing unlocks: area lines first (the headline), then
+  // items the player doesn't already own. Species lines are plan 4.
   function unlocksFor(from, to) {
-    return C.PERMANENTS
-      .filter(p => p.area === 'main' && p.level > from && p.level <= to && !S.owned[p.id])
-      .map(p => `${p.emoji} ${p.name}`);
+    const lines = [];
+    let newArea = null;
+    C.AREAS.filter(a => a.id !== 'main' && a.level > from && a.level <= to).forEach(a => {
+      lines.push(`🏡 ${a.name}`);
+      newArea = a.id;
+    });
+    C.PERMANENTS
+      .filter(p => p.level > from && p.level <= to && !S.owned[p.id])
+      .forEach(p => lines.push(`${p.emoji} ${p.name}`));
+    return { lines, newArea };
   }
 
   function maybeLevelUpOverlay() {
@@ -131,13 +138,14 @@
     pendingLevelUp = null;
     $('levelup-title').textContent = `${S.pet.name} grew to Level ${p.to}!`;
     $('levelup-sprite').innerHTML = PPSprites.svg(S.pet.species, 'happy', 96);
-    const items = unlocksFor(p.from, p.to);
-    $('levelup-list').innerHTML = items.length
-      ? items.map(s => `<div class="unlock-row">${s}</div>`).join('')
+    const u = unlocksFor(p.from, p.to);
+    $('levelup-list').innerHTML = u.lines.length
+      ? u.lines.map(s => `<div class="unlock-row">${s}</div>`).join('')
       : '<div class="unlock-row">💛 Growing stronger together</div>';
     const cta = $('levelup-cta');
-    cta.textContent = items.length ? 'See the shop' : 'Continue';
-    cta.dataset.dest = items.length ? 'shop' : 'stay';
+    cta.textContent = u.newArea ? 'Visit the room' : (u.lines.length ? 'See the shop' : 'Continue');
+    cta.dataset.dest = u.newArea ? 'room' : (u.lines.length ? 'shop' : 'stay');
+    cta.dataset.area = u.newArea || '';
     overlay('overlay-levelup', true);
     const sp = $('levelup-sprite');
     sp.classList.remove('bounce'); void sp.offsetWidth; sp.classList.add('bounce');
@@ -145,7 +153,19 @@
 
   $('levelup-cta').addEventListener('click', () => {
     overlay('overlay-levelup', false);
-    if ($('levelup-cta').dataset.dest === 'shop') { renderPet(); show('screen-pet'); }
+    const cta = $('levelup-cta');
+    if (cta.dataset.dest === 'stay') return;
+    petReturnTo = document.querySelector('.screen.active').id;
+    renderPet();
+    show('screen-pet');
+    if (cta.dataset.dest === 'room' && cta.dataset.area) {
+      const panel = $(`area-${cta.dataset.area}`);
+      if (panel) {
+        panel.scrollIntoView({ behavior: 'smooth', inline: 'start' });
+        panel.classList.add('sparkle');
+        setTimeout(() => panel.classList.remove('sparkle'), 1300);
+      }
+    }
   });
 
   function touch() {
@@ -468,7 +488,7 @@
     };
     if (bounce) { spriteEl.classList.remove('bounce'); void spriteEl.offsetWidth; spriteEl.classList.add('bounce'); }
     $('pet-speech').textContent = moodText();
-    $('pet-title').textContent = `${S.pet.name} the ${S.pet.species}`;
+    $('pet-title').textContent = `${S.pet.name} the ${S.pet.species} · Lv ${PPLevel.displayLevel(S.pet)}`;
     renderLevel();
     renderEnergy('pet-energy-fill', 'pet-energy-label');
 
@@ -560,8 +580,13 @@
       pr.appendChild(more);
     }
   }
-  $('btn-pet').addEventListener('click', () => { renderPet(); show('screen-pet'); });
-  $('pet-back').addEventListener('click', () => { renderHome(); show('screen-home'); });
+  $('btn-pet').addEventListener('click', () => { petReturnTo = 'screen-home'; renderPet(); show('screen-pet'); });
+  $('pet-back').addEventListener('click', () => {
+    const dest = petReturnTo;
+    petReturnTo = 'screen-home';
+    if (dest === 'screen-calendar') renderCalendar(); else renderHome();
+    show(dest);
+  });
 
   // ---------- onboarding: welcome → meet → name → arrive ----------
   // Species is written once at the "meet" beat and never again. Tapping a
@@ -572,6 +597,9 @@
   // Queued level-up crossing, shown after the win overlay's Continue and any
   // interstitial (never stacked). In-memory only — see awardXp.
   let pendingLevelUp = null;
+  // Where 'pet-back' should return to. Defaults home; the level-up CTA and
+  // btn-pet set it just before navigating into the pet screen.
+  let petReturnTo = 'screen-home';
 
   function onbStep(id) {
     document.querySelectorAll('.onboard-step').forEach(s => s.classList.remove('active'));

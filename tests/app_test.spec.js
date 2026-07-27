@@ -355,7 +355,7 @@ test('the shop gates by level: visible tier, one teased tier, quiet collapse', a
   await expect(page.locator('#shop-bowl .pr')).toHaveText('in room ✓');
 });
 
-test('level-up overlay with no main unlocks shows a quiet fallback and does not navigate', async ({ page }) => {
+test('crossing an area level headlines the area and visits the room', async ({ page }) => {
   await page.goto('/');
   await page.click('#onb-welcome-go');
   await page.click('#species-cat');
@@ -363,10 +363,9 @@ test('level-up overlay with no main unlocks shows a quiet fallback and does not 
   await page.click('#onb-name-go');
   await page.click('#onb-arrive-go');
 
-  // Sit one easy-solve below the L4→L5 threshold. L5 has no main-area
-  // unlocks (cushion/lights at level 5 are both 'nook'), so crossing it is
-  // the common case: the overlay must fall back to the quiet placeholder
-  // row instead of rendering an empty list.
+  // Sit one easy-solve below the L4→L5 threshold. L5 unlocks the nook area
+  // (plus its two level-5 items): the overlay must headline the area, not
+  // just list items, and the CTA must offer to visit the room.
   const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
   const l5 = await page.evaluate(() => window.PPConfig.LEVEL_XP[3]);
   await page.evaluate(xp => window.PP._grantXp(xp), l5 - perEasy);
@@ -377,6 +376,44 @@ test('level-up overlay with no main unlocks shows a quiet fallback and does not 
 
   await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
   await expect(page.locator('#levelup-title')).toContainText('Level 5');
+  await expect(page.locator('#levelup-list')).toContainText('🏡 Window nook');
+  await expect(page.locator('#levelup-list')).toContainText('Window cushion');
+  await expect(page.locator('#levelup-list')).toContainText('String lights');
+  await expect(page.locator('#levelup-cta')).toHaveText('Visit the room');
+  await page.click('#levelup-cta');
+  await expect(page.locator('#overlay-levelup')).not.toHaveClass(/show/);
+  await expect(page.locator('#screen-pet')).toHaveClass(/active/);
+  await expect(page.locator('#area-nook')).toHaveCount(1);
+
+  // pet-back returns to wherever the room was entered from — here, home.
+  await page.click('#pet-back');
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);
+});
+
+test('a crossing with nothing new falls back warmly', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-cat');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  // Pre-own the L6 unlock (toychest is the only thing that unlocks at L6,
+  // and the nook area is already open by then), so this crossing is
+  // genuinely empty — the overlay must fall back to the quiet placeholder
+  // row instead of rendering nothing.
+  await page.evaluate(() => { const s = window.PP.state(); s.owned.toychest = true; });
+
+  const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
+  const l6 = await page.evaluate(() => window.PPConfig.LEVEL_XP[4]);
+  await page.evaluate(xp => window.PP._grantXp(xp), l6 - perEasy);
+
+  await page.click('#slot-0');
+  await autosolve(page);
+  await continueWin(page);
+
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-title')).toContainText('Level 6');
   await expect(page.locator('#levelup-list')).toContainText('Growing stronger together');
   await expect(page.locator('#levelup-cta')).toHaveText('Continue');
   await page.click('#levelup-cta');
