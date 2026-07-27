@@ -355,6 +355,23 @@ test('the shop gates by level: visible tier, one teased tier, quiet collapse', a
   await expect(page.locator('#shop-bowl .pr')).toHaveText('in room ✓');
 });
 
+test('an owned item in a still-locked area keeps its shop row', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-dog');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  // koi (pond, unlocks at Lv 20) owned at Lv 1 — a corrupt-save or
+  // future-config-raise scenario. Owned is never hidden: it must still
+  // show a shop row, not vanish because its area isn't unlocked yet.
+  await page.evaluate(() => { window.PP.state().owned.koi = true; });
+  await page.click('#btn-pet');
+  await expect(page.locator('#shop-koi')).toHaveCount(1);
+  await expect(page.locator('#shop-koi .pr')).toHaveText('in room ✓');
+});
+
 test('crossing an area level headlines the area and visits the room', async ({ page }) => {
   await page.goto('/');
   await page.click('#onb-welcome-go');
@@ -384,6 +401,12 @@ test('crossing an area level headlines the area and visits the room', async ({ p
   await expect(page.locator('#overlay-levelup')).not.toHaveClass(/show/);
   await expect(page.locator('#screen-pet')).toHaveClass(/active/);
   await expect(page.locator('#area-nook')).toHaveCount(1);
+
+  // The CTA actually scrolled the strip to the new area (smooth scroll —
+  // poll until the animation lands rather than asserting immediately).
+  await expect.poll(() =>
+    page.evaluate(() => document.getElementById('scene-strip').scrollLeft)
+  ).toBeGreaterThan(0);
 
   // pet-back returns to wherever the room was entered from — here, home.
   await page.click('#pet-back');
@@ -454,4 +477,22 @@ test('areas unlock as panels, decor lands in its area, shop groups', async ({ pa
 
   // The pet-room title carries the level.
   await expect(page.locator('#pet-title')).toContainText('· Lv 5');
+});
+
+test('late game: every area and every catalog item is in the room by Lv 30', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-cat');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  await page.evaluate(() => window.PP._grantXp(window.PPConfig.LEVEL_XP[28]));  // L30
+  await page.click('#btn-pet');
+
+  await expect(page.locator('.area')).toHaveCount(5);
+  await expect(page.locator('.shop-area-head')).toHaveCount(5);
+  await expect(page.locator('#permanents-row .item-btn')).toHaveCount(37);
+  await expect(page.locator('#shop-more')).toHaveCount(0);
+  await expect(page.locator('#pet-title')).toContainText('· Lv 30');
 });
