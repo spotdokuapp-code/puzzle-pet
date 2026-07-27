@@ -8,8 +8,10 @@ const { chromium } = require('@playwright/test');
   const shot = name => page.screenshot({ path: `shots/${name}.png` });
 
   await shot('1-onboard');
-  await page.click('#species-bunny');
-  await page.click('#onboard-go');
+  await page.click('#onb-hello-go');
+  await page.click('#species-cat');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
   await shot('2-home');
 
   await page.click('#slot-0');
