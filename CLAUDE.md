@@ -25,6 +25,7 @@ Cozy iOS game: daily Star Battle-style logic puzzles earn coins to care for a sm
 - **Pause, don't decay** while the player is away. Calendar back-fill restores anything missed and still pays.
 - **Streak minimum stays cheap**: the easy opener alone always preserves the streak and the pet's day. All three = set bonus.
 - **Species-neutral tone** — the roster includes a dino and an alien.
+- Species become switchable friends at levels 12/18/24/30 (SPECIES_UNLOCKS); switching keeps everything but the companion.
 - **Monetization ethics**: never a forced ad wall, never a hard fail screen, no pressure timers. Interstitials between puzzles only (`INTERSTITIAL_EVERY`), never mid-puzzle. Rewarded ads opt-in only. Ad/IAP code stays behind the `PPAds` stub interface until store build.
 - **Event log**: every meaningful action appends to `state.events` so later features can be retroactively granted from history. Never remove this.
 

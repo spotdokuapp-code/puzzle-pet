@@ -468,3 +468,68 @@ test('late game: every area and every catalog item is in the room by Lv 30', asy
   await expect(page.locator('#shop-more')).toHaveCount(0);
   await expect(page.locator('#pet-title')).toContainText('· Lv 30');
 });
+
+test('a friend unlocks at 12, moves in, and nothing else changes', async ({ page }) => {
+  await onboard(page, 'cat', 'Mochi');
+
+  // One easy-solve below L12: the crossing leads with the friend.
+  const l12 = await page.evaluate(() => window.PPConfig.LEVEL_XP[10]);
+  const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
+  await page.evaluate(xp => window.PP._grantXp(xp), l12 - perEasy);
+  await page.click('#slot-0');
+  await autosolve(page);
+  await continueWin(page);
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-list .unlock-row').first())
+    .toContainText('Clover the bunny would love to move in!');
+  await expect(page.locator('#levelup-cta')).toHaveText('Meet them');
+  await page.click('#levelup-cta');
+  await expect(page.locator('#overlay-friends')).toHaveClass(/show/);
+  await expect(page.locator('#friend-bunny')).toBeVisible();
+  await expect(page.locator('#friend-alien')).toHaveCount(0);   // locked: absent, not teased
+
+  // Invite Clover; everything but the companion is untouched.
+  const before = await page.evaluate(() => {
+    const s = window.PP.state();
+    return { xp: s.pet.xp, coins: s.coins, owned: Object.keys(s.owned).length, solves: s.solves };
+  });
+  await page.click('#friend-bunny');
+  await expect(page.locator('#friend-name-input')).toHaveValue('Clover');
+  await page.click('#friend-invite');
+  await expect(page.locator('#toast')).toContainText('Mochi waves happily — Clover is moving in!');
+  const after = await page.evaluate(() => {
+    const s = window.PP.state();
+    return { xp: s.pet.xp, coins: s.coins, owned: Object.keys(s.owned).length,
+             solves: s.solves, species: s.pet.species, name: s.pet.name,
+             events: s.events.map(e => e.type) };
+  });
+  expect(after.xp).toBe(before.xp);
+  expect(after.coins).toBe(before.coins);
+  expect(after.owned).toBe(before.owned);
+  expect(after.solves).toBe(before.solves);
+  expect(after.species).toBe('bunny');
+  expect(after.name).toBe('Clover');
+  expect(after.events).toContain('species_unlocked');
+  expect(after.events).toContain('pet_changed');
+  await expect(page.locator('#home-pet-name')).toHaveText('Clover');
+});
+
+test('a save already past milestones gets quiet retroactive unlocks', async ({ page }) => {
+  await onboard(page, 'dog');
+  await page.evaluate(() => window.PP._grantXp(window.PPConfig.LEVEL_XP[22]));  // L24
+  await page.reload();
+  const s = await page.evaluate(() => window.PP.state());
+  const granted = s.events.filter(e => e.type === 'species_unlocked').map(e => e.species).sort();
+  expect(granted).toEqual(['bunny', 'dino', 'fox']);   // not alien (L30)
+  // Idempotent: a second reload adds nothing.
+  await page.reload();
+  const again = await page.evaluate(() =>
+    window.PP.state().events.filter(e => e.type === 'species_unlocked').length);
+  expect(again).toBe(3);
+  // The roster shows them; the alien stays absent.
+  await page.evaluate(() => window.PP._renderHome());
+  await page.click('#btn-settings');
+  await page.click('#settings-friends');
+  await expect(page.locator('.friend-card')).toHaveCount(5);
+  await expect(page.locator('#friend-alien')).toHaveCount(0);
+});
