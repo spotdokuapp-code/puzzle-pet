@@ -141,8 +141,8 @@
     let newSpecies = null;
     Object.keys(C.SPECIES_UNLOCKS).forEach(sp => {
       const lv = C.SPECIES_UNLOCKS[sp];
-      if (lv > from && lv <= to) {
-        lines.push(`🐾 ${C.DEFAULT_NAMES[sp]} the ${sp} would love to move in!`);
+      if (lv > from && lv <= to && sp !== S.pet.species) {
+        lines.push(`🐾 ${C.DEFAULT_NAMES[sp]} the ${sp} would love to move in! You can invite them anytime.`);
         newSpecies = sp;
       }
     });
@@ -723,7 +723,7 @@
     $('friend-confirm').style.display = 'none';
     const list = $('friends-list');
     list.innerHTML = '';
-    PPLevel.unlockedSpecies(S.pet).forEach(sp => {
+    PPLevel.unlockedSpecies(S.pet, S.events).forEach(sp => {
       const isCurrent = sp === S.pet.species;
       const card = document.createElement('button');
       card.className = 'friend-card' + (isCurrent ? ' current' : '');
@@ -759,6 +759,7 @@
     S.pet.name = ($('friend-name-input').value.trim() || oldName).slice(0, 14);
     touch();
     log('pet_changed', { from, to: S.pet.species, name: S.pet.name });
+    inviteSpecies = null;
     overlay('overlay-friends', false);
     toast(`${oldName} waves happily — ${S.pet.name} is moving in! 🎉`, 3500);
     renderHome();
