@@ -30,8 +30,8 @@ C.PERMANENTS.forEach(p => {
   prevLevel = p.level;
 });
 
-// Spec §2: every level 2..30 unlocks at least one thing (item, area, or —
-// in plan 4 — a species). Items and areas are what exist in config today;
+// Spec §2: every level 2..30 unlocks at least one thing (item, area, or
+// a species). Items and areas are what exist in config today;
 // species milestone levels are covered by their area/item entries per §6.
 for (let lv = 2; lv <= 30; lv++) {
   const hasItem = C.PERMANENTS.some(p => p.level === lv);

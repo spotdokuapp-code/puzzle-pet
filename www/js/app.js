@@ -112,16 +112,40 @@
       // Continue and after any interstitial. Crossing two thresholds before
       // it shows merges into one overlay (lowest from, highest to).
       pendingLevelUp = { from: pendingLevelUp ? pendingLevelUp.from : before, to: after };
+      grantSpeciesUnlocks();
     }
     save();
     return gained;
   }
 
-  // Everything a crossing unlocks: area lines first (the headline), then
-  // items the player doesn't already own. Species lines are plan 4.
+  // Species reveals are earned by level, and a migrated or ratcheted save
+  // may already be past a milestone. Log each species_unlocked exactly once;
+  // availability itself is derived, so this is the event-log record, not a
+  // gate. Quiet by design — the roster appears in Your friends.
+  function grantSpeciesUnlocks() {
+    if (!S.pet.species) return;
+    const have = new Set(S.events.filter(e => e.type === 'species_unlocked').map(e => e.species));
+    const lv = PPLevel.displayLevel(S.pet);
+    Object.keys(C.SPECIES_UNLOCKS).forEach(sp => {
+      if (lv >= C.SPECIES_UNLOCKS[sp] && !have.has(sp)) {
+        log('species_unlocked', { species: sp, level: C.SPECIES_UNLOCKS[sp] });
+      }
+    });
+  }
+
+  // Everything a crossing unlocks. The friend leads (spec §7), then areas,
+  // then items the player doesn't own. Locked content never appears early.
   function unlocksFor(from, to) {
     const lines = [];
     let newArea = null;
+    let newSpecies = null;
+    Object.keys(C.SPECIES_UNLOCKS).forEach(sp => {
+      const lv = C.SPECIES_UNLOCKS[sp];
+      if (lv > from && lv <= to && sp !== S.pet.species) {
+        lines.push(`🐾 ${C.DEFAULT_NAMES[sp]} the ${sp} would love to move in! You can invite them anytime.`);
+        newSpecies = sp;
+      }
+    });
     C.AREAS.filter(a => a.id !== 'main' && a.level > from && a.level <= to).forEach(a => {
       lines.push(`🏡 ${a.name}`);
       newArea = a.id;
@@ -129,7 +153,7 @@
     C.PERMANENTS
       .filter(p => p.level > from && p.level <= to && !S.owned[p.id])
       .forEach(p => lines.push(`${p.emoji} ${p.name}`));
-    return { lines, newArea };
+    return { lines, newArea, newSpecies };
   }
 
   function maybeLevelUpOverlay() {
@@ -143,8 +167,10 @@
       ? u.lines.map(s => `<div class="unlock-row">${s}</div>`).join('')
       : '<div class="unlock-row">💛 Growing stronger together</div>';
     const cta = $('levelup-cta');
-    cta.textContent = u.newArea ? 'Visit the room' : (u.lines.length ? 'See the shop' : 'Continue');
-    cta.dataset.dest = u.newArea ? 'room' : (u.lines.length ? 'shop' : 'stay');
+    cta.textContent = u.newSpecies ? 'Meet them'
+      : (u.newArea ? 'Visit the room' : (u.lines.length ? 'See the shop' : 'Continue'));
+    cta.dataset.dest = u.newSpecies ? 'friends'
+      : (u.newArea ? 'room' : (u.lines.length ? 'shop' : 'stay'));
     cta.dataset.area = u.newArea || '';
     overlay('overlay-levelup', true);
     const sp = $('levelup-sprite');
@@ -155,6 +181,7 @@
     overlay('overlay-levelup', false);
     const cta = $('levelup-cta');
     if (cta.dataset.dest === 'stay') return;
+    if (cta.dataset.dest === 'friends') { openFriends(); return; }
     petReturnTo = document.querySelector('.screen.active').id;
     renderPet();
     show('screen-pet');
@@ -604,10 +631,9 @@
     show(dest);
   });
 
-  // ---------- onboarding: welcome → meet → name → arrive ----------
-  // Species is written once at the "meet" beat and never again. Tapping a
-  // creature only previews it; a separate button commits. That matters because
-  // the choice is permanent, so a mis-tap must never decide it.
+  // ---------- welcome cycle: hello → choose → name ----------
+  // Two large cards with blurbs inline; tap selects, the CTA commits —
+  // a mis-tap never decides. Lands on Home with the first-day toast.
   let selSpecies = null;
 
   // Queued level-up crossing, shown after the win overlay's Continue and any
@@ -630,25 +656,23 @@
       const b = document.createElement('button');
       b.className = 'species-btn';
       b.id = `species-${sp}`;
-      b.innerHTML = PPSprites.svg(sp, 'happy', 62) + `<span class="nm">${sp}</span>`;
+      b.innerHTML = PPSprites.svg(sp, 'happy', 72) +
+        `<span class="nm">${sp}</span>` +
+        `<span class="blurb">${C.SPECIES_BLURBS[sp]}</span>`;
       b.addEventListener('click', () => {
         selSpecies = sp;
         grid.querySelectorAll('.species-btn').forEach(x => x.classList.remove('sel'));
         b.classList.add('sel');
-        $('onb-preview').innerHTML = PPSprites.svg(sp, 'happy', 84);
-        $('onb-blurb').textContent = C.SPECIES_BLURBS[sp];
         $('onb-choose-go').disabled = false;
       });
       grid.appendChild(b);
     });
-    $('onb-preview').innerHTML = '';
-    $('onb-blurb').innerHTML = '&nbsp;';
     $('onb-choose-go').disabled = true;
     $('pet-name-input').value = '';
-    onbStep('onb-welcome');
+    onbStep('onb-hello');
   }
 
-  $('onb-welcome-go').addEventListener('click', () => onbStep('onb-choose'));
+  $('onb-hello-go').addEventListener('click', () => onbStep('onb-choose'));
 
   $('onb-choose-go').addEventListener('click', () => {
     if (!selSpecies) return;
@@ -663,16 +687,10 @@
     S.pet.name = ($('pet-name-input').value.trim() || C.DEFAULT_NAMES[selSpecies]).slice(0, 14);
     touch();
     log('pet_chosen', { species: S.pet.species, name: S.pet.name });
-    const arriveSprite = $('onb-arrive-sprite');
-    arriveSprite.innerHTML = PPSprites.svg(S.pet.species, 'happy', 110);
-    arriveSprite.classList.add('bounce');
-    $('onb-speech').textContent = moodText();
-    onbStep('onb-arrive');
-  });
-
-  $('onb-arrive-go').addEventListener('click', () => {
+    grantSpeciesUnlocks();
     renderHome();
     show('screen-home');
+    toast(`Solve today's Easy puzzle to make ${S.pet.name}'s day 💛`, 4000);
   });
 
   // ---------- settings ----------
@@ -697,6 +715,57 @@
     if ($('screen-pet').classList.contains('active')) renderPet();
     toast(`Say hello to ${next}! 💛`);
   });
+
+  // ---------- friends switcher: the roster grows with the level ----------
+  let inviteSpecies = null;
+  function openFriends() {
+    inviteSpecies = null;
+    $('friend-confirm').style.display = 'none';
+    const list = $('friends-list');
+    list.innerHTML = '';
+    PPLevel.unlockedSpecies(S.pet, S.events).forEach(sp => {
+      const isCurrent = sp === S.pet.species;
+      const card = document.createElement('button');
+      card.className = 'friend-card' + (isCurrent ? ' current' : '');
+      card.id = `friend-${sp}`;
+      card.innerHTML = PPSprites.svg(sp, 'happy', 56) +
+        `<span class="nm">${sp}</span>` +
+        (isCurrent ? '<span class="st">with you now</span>' : '');
+      if (!isCurrent) card.addEventListener('click', () => {
+        inviteSpecies = sp;
+        $('friend-confirm-sprite').innerHTML = PPSprites.svg(sp, 'happy', 84);
+        $('friend-name-input').value = C.DEFAULT_NAMES[sp];
+        $('friend-confirm').style.display = '';
+      });
+      list.appendChild(card);
+    });
+    overlay('overlay-friends', true);
+  }
+  $('settings-friends').addEventListener('click', () => {
+    overlay('overlay-settings', false);
+    openFriends();
+  });
+  $('friends-close').addEventListener('click', () => overlay('overlay-friends', false));
+  $('friend-cancel').addEventListener('click', () => {
+    inviteSpecies = null;
+    $('friend-confirm').style.display = 'none';
+  });
+  $('friend-invite').addEventListener('click', () => {
+    if (!inviteSpecies) return;
+    const from = S.pet.species;
+    const oldName = S.pet.name;
+    // Only the companion changes. Level, xp, room, coins, streak — untouched.
+    S.pet.species = inviteSpecies;
+    S.pet.name = ($('friend-name-input').value.trim() || oldName).slice(0, 14);
+    touch();
+    log('pet_changed', { from, to: S.pet.species, name: S.pet.name });
+    inviteSpecies = null;
+    overlay('overlay-friends', false);
+    toast(`${oldName} waves happily — ${S.pet.name} is moving in! 🎉`, 3500);
+    renderHome();
+    if ($('screen-pet').classList.contains('active')) renderPet(true);
+  });
+
   let resetArmed = false;
   $('settings-reset').addEventListener('click', () => {
     if (!resetArmed) {
@@ -719,6 +788,7 @@
     delete S.backfillToast;
     save();
   }
+  grantSpeciesUnlocks();
   if (!S.pet.species) {
     renderOnboard();
     show('screen-onboard');

@@ -497,6 +497,17 @@ test('a save already past milestones gets quiet retroactive unlocks', async ({ p
 
 ---
 
+## Known deferred items (as shipped)
+
+Triaged in the final whole-branch review; recorded here because the SDD scratch workspace is deleted after merge.
+
+- **L30 skips the deck's arrival moment** (plan-mandated: species wins the CTA at the only species/area collision). The deck panel exists on the next room visit but its sparkle never fires. Endgame-postcard polish for the backlog.
+- **Event-cap re-log:** a `species_unlocked` event that ages past the 5000-entry trim gets re-logged at next boot with a fresh timestamp. Log-fidelity noise only; nothing gates on it.
+- **`daysKnown` counts household age, not the current friend's tenure** — reviewed and ruled correct: the home is the identity (spec framing); streak/owned speech lines already attribute household history the same way. Revisit only if playtesters flinch at a day-1 friend saying "we've been at this a while."
+- **A previously-met species crossing its milestone while not current** still gets a "would love to move in!" line — behaves as a warm re-invite; noted in case the copy ever reads oddly.
+- `ENABLED_SPECIES` (really "starter roster") vs `unlockedSpecies` naming reads oddly; rename candidate for the tuning pass.
+- One historical "plan 2" comment remains in `catalog_test.js`'s geometry section (accurate as history; left).
+
 ## Handoff (post-v2 backlog)
 
 - The deck "any species stargazing" postcard; a gentle catch-up reveal for retro unlocks (currently quiet by decision); the L6–L9 "See the shop" scroll polish; Takuzu and everything in CLAUDE.md's out-of-scope list.

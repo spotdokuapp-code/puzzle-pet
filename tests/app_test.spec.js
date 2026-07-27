@@ -17,21 +17,31 @@ async function autosolve(page) {
   await page.evaluate(() => window.PP.game._autosolve());
 }
 
+async function onboard(page, species = 'dog', name) {
+  await page.goto('/');
+  await page.click('#onb-hello-go');
+  await page.click(`#species-${species}`);
+  await page.click('#onb-choose-go');
+  if (name) await page.fill('#pet-name-input', name);
+  await page.click('#onb-name-go');
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);
+}
+
 test('full core loop', async ({ page }) => {
   await page.goto('/');
 
-  // --- Onboarding: welcome → meet → name → arrive ---
+  // --- Welcome cycle: hello → choose → name ---
   await expect(page.locator('#screen-onboard')).toHaveClass(/active/);
-  await expect(page.locator('#onb-welcome')).toHaveClass(/active/);
-  await page.click('#onb-welcome-go');
+  await expect(page.locator('#onb-hello')).toHaveClass(/active/);
+  await page.click('#onb-hello-go');
 
-  // Tapping previews only; a separate button commits, because species is permanent.
+  // Tapping selects only; a separate button commits, because this choice is
+  // COMMITTED here (switchable later via Your friends, not casually mis-tapped).
   await expect(page.locator('#onb-choose')).toHaveClass(/active/);
   await expect(page.locator('#onb-choose-go')).toBeDisabled();
   const speciesShown = await page.locator('.species-btn').count();
   expect(speciesShown).toBe(2);
   await page.click('#species-dog');
-  await expect(page.locator('#onb-blurb')).not.toHaveText('');
   await page.click('#species-cat');            // browsing is safe
   await page.click('#species-dog');            // and reversible
   await expect(page.locator('#onb-choose-go')).toBeEnabled();
@@ -42,12 +52,11 @@ test('full core loop', async ({ page }) => {
   await page.fill('#pet-name-input', 'Pip');
   await page.click('#onb-name-go');
 
-  await expect(page.locator('#onb-arrive')).toHaveClass(/active/);
-  await expect(page.locator('#onb-speech')).toContainText('Pip');
-  await page.click('#onb-arrive-go');
-
   await expect(page.locator('#screen-home')).toHaveClass(/active/);
+  await expect(page.locator('#chip-level')).toHaveText('Lv 1');
   await expect(page.locator('#home-pet-name')).toHaveText('Pip');
+  await expect(page.locator('#toast')).toHaveClass(/show/);
+  await expect(page.locator('#toast')).toContainText("make Pip's day");
 
   // --- Daily slots: medium locked until easy done ---
   await expect(page.locator('#slot-1')).toHaveClass(/locked/);
@@ -165,12 +174,7 @@ test('daily puzzles are deterministic for a given date', async ({ page }) => {
 });
 
 test('xp comes from solving only, and levels ratchet up', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-cat');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'cat');
 
   // No visit XP in v2: a fresh pet starts at exactly zero.
   expect(await page.evaluate(() => window.PP.state().pet.xp)).toBe(0);
@@ -316,12 +320,7 @@ test('a v2 (bond) save migrates to v3, drops bond, and counts bonus days', async
 });
 
 test('the shop gates by level: visible tier, one teased tier, quiet collapse', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-dog');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'dog');
 
   await page.click('#btn-pet');
   // Lv 1: ball + plant purchasable; lamp + rug teased as the next tier;
@@ -356,12 +355,7 @@ test('the shop gates by level: visible tier, one teased tier, quiet collapse', a
 });
 
 test('an owned item in a still-locked area keeps its shop row', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-dog');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'dog');
 
   // koi (pond, unlocks at Lv 20) owned at Lv 1 — a corrupt-save or
   // future-config-raise scenario. Owned is never hidden: it must still
@@ -373,12 +367,7 @@ test('an owned item in a still-locked area keeps its shop row', async ({ page })
 });
 
 test('crossing an area level headlines the area and visits the room', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-cat');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'cat');
 
   // Sit one easy-solve below the L4→L5 threshold. L5 unlocks the nook area
   // (plus its two level-5 items): the overlay must headline the area, not
@@ -414,12 +403,7 @@ test('crossing an area level headlines the area and visits the room', async ({ p
 });
 
 test('a crossing with nothing new falls back warmly', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-cat');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'cat');
 
   // Pre-own the L6 unlock (toychest is the only thing that unlocks at L6,
   // and the nook area is already open by then), so this crossing is
@@ -445,12 +429,7 @@ test('a crossing with nothing new falls back warmly', async ({ page }) => {
 });
 
 test('areas unlock as panels, decor lands in its area, shop groups', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-cat');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'cat');
 
   // Lv 1: only the main panel exists — locked areas are absent, not teased.
   await page.click('#btn-pet');
@@ -480,12 +459,7 @@ test('areas unlock as panels, decor lands in its area, shop groups', async ({ pa
 });
 
 test('late game: every area and every catalog item is in the room by Lv 30', async ({ page }) => {
-  await page.goto('/');
-  await page.click('#onb-welcome-go');
-  await page.click('#species-cat');
-  await page.click('#onb-choose-go');
-  await page.click('#onb-name-go');
-  await page.click('#onb-arrive-go');
+  await onboard(page, 'cat');
 
   await page.evaluate(() => window.PP._grantXp(window.PPConfig.LEVEL_XP[28]));  // L30
   await page.click('#btn-pet');
@@ -495,4 +469,142 @@ test('late game: every area and every catalog item is in the room by Lv 30', asy
   await expect(page.locator('#permanents-row .item-btn')).toHaveCount(37);
   await expect(page.locator('#shop-more')).toHaveCount(0);
   await expect(page.locator('#pet-title')).toContainText('· Lv 30');
+});
+
+test('a friend unlocks at 12, moves in, and nothing else changes', async ({ page }) => {
+  await onboard(page, 'cat', 'Mochi');
+
+  // One easy-solve below L12: the crossing leads with the friend.
+  const l12 = await page.evaluate(() => window.PPConfig.LEVEL_XP[10]);
+  const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
+  await page.evaluate(xp => window.PP._grantXp(xp), l12 - perEasy);
+  await page.click('#slot-0');
+  await autosolve(page);
+  await continueWin(page);
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-list .unlock-row').first())
+    .toContainText('Clover the bunny would love to move in!');
+  await expect(page.locator('#levelup-cta')).toHaveText('Meet them');
+  await page.click('#levelup-cta');
+  await expect(page.locator('#overlay-friends')).toHaveClass(/show/);
+  await expect(page.locator('#friend-bunny')).toBeVisible();
+  await expect(page.locator('#friend-alien')).toHaveCount(0);   // locked: absent, not teased
+
+  // Invite Clover; everything but the companion is untouched.
+  const before = await page.evaluate(() => {
+    const s = window.PP.state();
+    return { xp: s.pet.xp, coins: s.coins, owned: Object.keys(s.owned).length, solves: s.solves };
+  });
+  await page.click('#friend-bunny');
+  await expect(page.locator('#friend-name-input')).toHaveValue('Clover');
+  await page.click('#friend-invite');
+  await expect(page.locator('#toast')).toContainText('Mochi waves happily — Clover is moving in!');
+  const after = await page.evaluate(() => {
+    const s = window.PP.state();
+    return { xp: s.pet.xp, coins: s.coins, owned: Object.keys(s.owned).length,
+             solves: s.solves, species: s.pet.species, name: s.pet.name,
+             events: s.events.map(e => e.type) };
+  });
+  expect(after.xp).toBe(before.xp);
+  expect(after.coins).toBe(before.coins);
+  expect(after.owned).toBe(before.owned);
+  expect(after.solves).toBe(before.solves);
+  expect(after.species).toBe('bunny');
+  expect(after.name).toBe('Clover');
+  expect(after.events).toContain('species_unlocked');
+  expect(after.events).toContain('pet_changed');
+  await expect(page.locator('#home-pet-name')).toHaveText('Clover');
+});
+
+test('a save already past milestones gets quiet retroactive unlocks', async ({ page }) => {
+  await onboard(page, 'dog');
+  await page.evaluate(() => window.PP._grantXp(window.PPConfig.LEVEL_XP[22]));  // L24
+  await page.reload();
+  const s = await page.evaluate(() => window.PP.state());
+  const granted = s.events.filter(e => e.type === 'species_unlocked').map(e => e.species).sort();
+  expect(granted).toEqual(['bunny', 'dino', 'fox']);   // not alien (L30)
+  // Idempotent: a second reload adds nothing.
+  await page.reload();
+  const again = await page.evaluate(() =>
+    window.PP.state().events.filter(e => e.type === 'species_unlocked').length);
+  expect(again).toBe(3);
+  // The roster shows them; the alien stays absent.
+  await page.evaluate(() => window.PP._renderHome());
+  await page.click('#btn-settings');
+  await page.click('#settings-friends');
+  await expect(page.locator('.friend-card')).toHaveCount(5);
+  await expect(page.locator('#friend-alien')).toHaveCount(0);
+});
+
+test('a friend once met is never lost, even below their own milestone', async ({ page }) => {
+  // Migrate a v1 save whose companion is a fox — a species onboarding no
+  // longer offers and whose own milestone (L18) the migrated level (L2)
+  // hasn't reached. Nothing should be lost by having ever met them.
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('puzzlepet.v1', JSON.stringify({
+      version: 1, createdDay: '2026-06-01', coins: 137,
+      pet: { species: 'fox', name: 'Pip', energy: 80, energyTs: Date.now() },
+      lastActiveDay: '2026-06-20',
+      days: { '2026-06-20': { slots: [true, true, false], bonus: false } },
+      owned: { ball: true, plant: true }, solves: 4, removeAds: false,
+      events: [
+        { type: 'pet_chosen', species: 'fox', name: 'Pip' },
+        { type: 'puzzle_solved', kind: 'daily', slot: 0 },
+        { type: 'puzzle_solved', kind: 'daily', slot: 1 },
+        { type: 'puzzle_solved', kind: 'daily', slot: 2 },
+        { type: 'feed', item: 'cake' }
+      ]
+    }));
+  });
+  await page.reload();
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);
+  const migratedLevel = await page.evaluate(() => window.PP.state().pet.levelHigh);
+  expect(migratedLevel).toBeLessThan(18);   // below fox's own milestone
+
+  // Switch away to dog, a below-milestone starter — the fox is no longer
+  // the current companion and its own level milestone is still unmet.
+  await page.click('#btn-settings');
+  await page.click('#settings-friends');
+  await page.click('#friend-dog');
+  await page.click('#friend-invite');
+  await expect(page.locator('#toast')).toContainText('is moving in');
+  await expect(page.locator('#home-pet-name')).toHaveText('Biscuit');
+
+  // Reopen the switcher: the fox — met before — is still there, and it
+  // is genuinely invitable, not a dead card.
+  await page.click('#btn-settings');
+  await page.click('#settings-friends');
+  await expect(page.locator('#friend-fox')).toBeVisible();
+  await page.click('#friend-fox');
+  await expect(page.locator('#friend-confirm')).toBeVisible();
+  await page.click('#friend-invite');
+  const s = await page.evaluate(() => window.PP.state());
+  expect(s.pet.species).toBe('fox');
+});
+
+test('crossing a milestone never invites the current companion', async ({ page }) => {
+  await onboard(page, 'cat', 'Mochi');
+
+  // State-seed a migrated/switched fox owner: fox is already the companion,
+  // so fox's own milestone crossing must never be offered as an invite.
+  await page.evaluate(() => {
+    const s = window.PP.state();
+    s.pet.species = 'fox';
+    s.events.push({ type: 'pet_chosen', species: 'fox' });
+  });
+
+  const l18 = await page.evaluate(() => window.PPConfig.LEVEL_XP[16]);
+  const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
+  await page.evaluate(xp => window.PP._grantXp(xp), l18 - perEasy);
+
+  await page.click('#slot-0');
+  await autosolve(page);
+  await continueWin(page);
+
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-title')).toContainText('Level 18');
+  await expect(page.locator('#levelup-list')).not.toContainText('would love to move in');
+  await expect(page.locator('#levelup-cta')).toHaveText('See the shop');
 });

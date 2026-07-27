@@ -55,6 +55,35 @@
     }
   }
 
+  // The invitable roster: starters, milestone species the (ratcheted) level
+  // has reached, whoever is currently the companion, and anyone who was ever
+  // a companion in the past (pet_chosen/pet_changed events) — a friend once
+  // met is never lost. A migrated fox owner who switches to a below-milestone
+  // dog still finds the fox here, even though onboarding no longer offers it
+  // and the level hasn't reached the milestone. Pure/derived, no new stored
+  // state; garbage species names in events are ignored. Ordered as C.SPECIES
+  // so the switcher renders stably.
+  function unlockedSpecies(pet, events = []) {
+    const lv = displayLevel(pet);
+    const su = C().SPECIES_UNLOCKS;
+    const species = C().SPECIES;
+    const evs = Array.isArray(events) ? events : [];
+    const everCompanion = new Set();
+    evs.forEach(e => {
+      if (!e) return;
+      if (e.type === 'pet_chosen' && species.includes(e.species)) everCompanion.add(e.species);
+      if (e.type === 'pet_changed') {
+        if (species.includes(e.from)) everCompanion.add(e.from);
+        if (species.includes(e.to)) everCompanion.add(e.to);
+      }
+    });
+    return species.filter(sp =>
+      C().ENABLED_SPECIES.includes(sp) ||
+      (su[sp] !== undefined && lv >= su[sp]) ||
+      sp === pet.species ||
+      everCompanion.has(sp));
+  }
+
   // Recomputes lifetime XP from history so an existing save arrives at the
   // level it already earned. Two sources: puzzle_solved events (per solve,
   // kind must be 'daily' or 'free'), and days[*].bonus (the set bonus was
@@ -91,7 +120,7 @@
     return xp;
   }
 
-  const PPLevel = { get CAP() { return CAP_OF(); }, thresholdFor, levelForXp, displayLevel, xpFor, backfill };
+  const PPLevel = { get CAP() { return CAP_OF(); }, thresholdFor, levelForXp, displayLevel, xpFor, backfill, unlockedSpecies };
   if (typeof module !== 'undefined' && module.exports) module.exports = PPLevel;
   global.PPLevel = PPLevel;
 })(typeof window !== 'undefined' ? window : globalThis);

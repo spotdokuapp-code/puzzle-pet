@@ -38,7 +38,8 @@
   },
 
   // --- Leveling (v2). Puzzle XP only; values are spec-locked, tuning deferred. ---
-  ENABLED_SPECIES: ['cat', 'dog'],   // onboarding roster; others return as unlocks (plan 4)
+  ENABLED_SPECIES: ['cat', 'dog'],   // starter roster; others arrive as level unlocks
+  SPECIES_UNLOCKS: { bunny: 12, fox: 18, dino: 24, alien: 30 },
   XP_PAYOUTS: [10, 20, 35],          // daily easy / medium / hard
   XP_SET_BONUS: 15,                  // granted with the coin set bonus
   XP_FREEPLAY: 3,                    // intentionally weak; daily set stays best rate
@@ -48,7 +49,7 @@
     6730,  7275,  7845,  8440,  9060,  9705, 10375, 11070, 11790, 12535
   ],
 
-  AREAS: [                           // room regions; plan 3 renders them, plan 2 only reads ids
+  AREAS: [                           // room regions, rendered as panels in the pet room
     { id: 'main',   level: 1,  name: 'Home' },
     { id: 'nook',   level: 5,  name: 'Window nook' },
     { id: 'garden', level: 10, name: 'Garden' },

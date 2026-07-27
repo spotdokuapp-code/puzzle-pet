@@ -251,11 +251,12 @@ body {
   background: #fdf9f2; border: 1px solid var(--soft-line); border-radius: 16px;
   margin: 10px 0 8px; padding: 8px;
 }
-.onboard-blurb {
-  color: var(--ink-soft); font-size: .86rem; font-style: italic;
-  margin: 0 0 6px; min-height: 1.2em;
+.species-grid.choose-two { grid-template-columns: repeat(2, 1fr); }
+.species-grid.choose-two .species-btn { padding: 14px 8px 10px; }
+.species-grid.choose-two .blurb {
+  display: block; font-size: .7rem; color: var(--ink-soft); font-weight: 600;
+  margin-top: 4px; min-height: 2.4em;
 }
-.arrive-scene { margin-bottom: 12px; }
 
 /* Level meter */
 .level-meter { margin-top: 10px; }
@@ -303,3 +304,13 @@ body {
   background: #fffdf8; border: 1px solid var(--soft-line); border-radius: 10px;
   padding: 7px 10px; margin: 5px 0; font-weight: 700; font-size: .88rem;
 }
+
+/* Friends switcher */
+.friends-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+.friend-card {
+  background: var(--card); border: 2px solid var(--soft-line); border-radius: 14px;
+  padding: 8px 4px 6px; font: inherit; color: var(--ink); cursor: pointer; text-align: center;
+}
+.friend-card.current { border-color: var(--good); background: #f2f8ee; cursor: default; }
+.friend-card .nm { font-size: .72rem; font-weight: 700; text-transform: capitalize; display: block; }
+.friend-card .st { font-size: .62rem; color: var(--good); font-weight: 700; }

@@ -117,5 +117,40 @@ check(PPLevel.backfill([{ type: 'puzzle_solved', kind: 'daily', slot: 2, xp: 10 
 check(PPLevel.backfill([{ type: 'puzzle_solved', kind: 'daily', slot: 0 }], {}) === C.XP_PAYOUTS[0],
   'a pre-v3 event with no xp field still credits by kind/slot');
 
+// --- unlockedSpecies: starters + milestones + current, C.SPECIES order ---
+const su = C.SPECIES_UNLOCKS;
+check(su.bunny === 12 && su.fox === 18 && su.dino === 24 && su.alien === 30, 'milestones per spec');
+function petAt(level, species) {
+  return { xp: PPLevel.thresholdFor(level), levelHigh: 1, species: species || 'cat' };
+}
+check(PPLevel.unlockedSpecies(petAt(1), []).join(',') === 'dog,cat', 'starters only at L1');
+check(PPLevel.unlockedSpecies(petAt(11), []).join(',') === 'dog,cat', 'nothing early');
+check(PPLevel.unlockedSpecies(petAt(12), []).join(',') === 'dog,cat,bunny', 'bunny at 12');
+check(PPLevel.unlockedSpecies(petAt(24), []).join(',') === 'dog,cat,bunny,fox,dino', 'dino at 24, no alien');
+check(PPLevel.unlockedSpecies(petAt(30), []).join(',') === 'dog,cat,bunny,fox,dino,alien', 'all at 30');
+check(PPLevel.unlockedSpecies(petAt(2, 'fox'), []).includes('fox'), 'current species always listed');
+check(PPLevel.unlockedSpecies({ xp: 100, levelHigh: 12 }, []).includes('bunny'), 'ratcheted level counts');
+
+// --- a friend once met is never lost: past pet_chosen/pet_changed events
+// keep a below-milestone species in the roster even after switching away ---
+const switchedAwayFromFox = [
+  { type: 'pet_chosen', species: 'fox' },
+  { type: 'pet_changed', from: 'fox', to: 'dog' }
+];
+check(PPLevel.unlockedSpecies(petAt(2, 'dog'), switchedAwayFromFox).includes('fox'),
+  'a fox met before, then switched away below the L18 milestone, is still listed');
+check(PPLevel.unlockedSpecies(petAt(2, 'dog')).join(',') === 'dog,cat',
+  'events defaults to [] — no roster is invented from nothing');
+
+// Garbage species names in events are ignored, not surfaced or thrown on.
+const garbageEvents = [
+  { type: 'pet_chosen', species: 'dragon' },
+  { type: 'pet_changed', from: 'dragon', to: 'not-a-species' },
+  { type: 'pet_changed', from: null, to: undefined },
+  null
+];
+check(PPLevel.unlockedSpecies(petAt(2, 'dog'), garbageEvents).join(',') === 'dog,cat',
+  'garbage species names in events are ignored');
+
 if (failures) { console.error(`${failures} failure(s)`); process.exit(1); }
 console.log('level tests: all passed');
