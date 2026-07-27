@@ -39,6 +39,7 @@
 
   // --- Leveling (v2). Puzzle XP only; values are spec-locked, tuning deferred. ---
   ENABLED_SPECIES: ['cat', 'dog'],   // onboarding roster; others return as unlocks (plan 4)
+  SPECIES_UNLOCKS: { bunny: 12, fox: 18, dino: 24, alien: 30 },
   XP_PAYOUTS: [10, 20, 35],          // daily easy / medium / hard
   XP_SET_BONUS: 15,                  // granted with the coin set bonus
   XP_FREEPLAY: 3,                    // intentionally weak; daily set stays best rate

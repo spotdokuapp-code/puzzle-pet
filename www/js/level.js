@@ -55,6 +55,19 @@
     }
   }
 
+  // The invitable roster: starters, milestone species the (ratcheted) level
+  // has reached, and whoever is currently the companion — a migrated save
+  // keeps its fox even though onboarding no longer offers one. Ordered as
+  // C.SPECIES so the switcher renders stably.
+  function unlockedSpecies(pet) {
+    const lv = displayLevel(pet);
+    const su = C().SPECIES_UNLOCKS;
+    return C().SPECIES.filter(sp =>
+      C().ENABLED_SPECIES.includes(sp) ||
+      (su[sp] !== undefined && lv >= su[sp]) ||
+      sp === pet.species);
+  }
+
   // Recomputes lifetime XP from history so an existing save arrives at the
   // level it already earned. Two sources: puzzle_solved events (per solve,
   // kind must be 'daily' or 'free'), and days[*].bonus (the set bonus was
@@ -91,7 +104,7 @@
     return xp;
   }
 
-  const PPLevel = { get CAP() { return CAP_OF(); }, thresholdFor, levelForXp, displayLevel, xpFor, backfill };
+  const PPLevel = { get CAP() { return CAP_OF(); }, thresholdFor, levelForXp, displayLevel, xpFor, backfill, unlockedSpecies };
   if (typeof module !== 'undefined' && module.exports) module.exports = PPLevel;
   global.PPLevel = PPLevel;
 })(typeof window !== 'undefined' ? window : globalThis);
