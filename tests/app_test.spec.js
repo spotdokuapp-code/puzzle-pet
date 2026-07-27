@@ -35,7 +35,8 @@ test('full core loop', async ({ page }) => {
   await expect(page.locator('#onb-hello')).toHaveClass(/active/);
   await page.click('#onb-hello-go');
 
-  // Tapping selects only; a separate button commits, because species is permanent.
+  // Tapping selects only; a separate button commits, because this choice is
+  // COMMITTED here (switchable later via Your friends, not casually mis-tapped).
   await expect(page.locator('#onb-choose')).toHaveClass(/active/);
   await expect(page.locator('#onb-choose-go')).toBeDisabled();
   const speciesShown = await page.locator('.species-btn').count();
