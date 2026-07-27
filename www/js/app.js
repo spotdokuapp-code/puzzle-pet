@@ -161,7 +161,10 @@
     if (cta.dataset.dest === 'room' && cta.dataset.area) {
       const panel = $(`area-${cta.dataset.area}`);
       if (panel) {
-        panel.scrollIntoView({ behavior: 'smooth', inline: 'start' });
+        // block: 'nearest' keeps the scroll inside the strip — without it,
+        // 'start' (the default) scrolls the whole DOCUMENT too, and the
+        // back button can end up above the viewport.
+        panel.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
         panel.classList.add('sparkle');
         setTimeout(() => panel.classList.remove('sparkle'), 1300);
       }
@@ -447,12 +450,15 @@
   }
   function renderPet(bounce) {
     $('chip-coins-pet').textContent = `🪙 ${S.coins}`;
-    const lvNowScene = PPLevel.displayLevel(S.pet);
+    const lvNow = PPLevel.displayLevel(S.pet);
     const strip = $('scene-strip');
     // Build one panel per UNLOCKED area; locked areas do not exist in the
     // DOM at all — no doors, no silhouettes. Main's panel is static.
+    // scene-strip's scrollLeft survives this remove/re-append only because
+    // no layout flush happens in between — do not insert measurements
+    // (getBoundingClientRect/offsetWidth) here, or the scroll position resets.
     strip.querySelectorAll('.area:not(.area-main)').forEach(e => e.remove());
-    C.AREAS.filter(a => a.id !== 'main' && a.level <= lvNowScene).forEach(a => {
+    C.AREAS.filter(a => a.id !== 'main' && a.level <= lvNow).forEach(a => {
       const panel = document.createElement('div');
       panel.className = `area area-${a.id}`;
       panel.id = `area-${a.id}`;
@@ -488,7 +494,7 @@
     };
     if (bounce) { spriteEl.classList.remove('bounce'); void spriteEl.offsetWidth; spriteEl.classList.add('bounce'); }
     $('pet-speech').textContent = moodText();
-    $('pet-title').textContent = `${S.pet.name} the ${S.pet.species} · Lv ${PPLevel.displayLevel(S.pet)}`;
+    $('pet-title').textContent = `${S.pet.name} the ${S.pet.species} · Lv ${lvNow}`;
     renderLevel();
     renderEnergy('pet-energy-fill', 'pet-energy-label');
 
@@ -514,9 +520,11 @@
 
     const pr = $('permanents-row');
     pr.innerHTML = '';
-    const lvNow = PPLevel.displayLevel(S.pet);
     const unlockedAreas = C.AREAS.filter(a => a.level <= lvNow).map(a => a.id);
-    const inUnlocked = C.PERMANENTS.filter(p => unlockedAreas.includes(p.area));
+    // Owned is never hidden — in the shop or the room: a (corrupt-save or
+    // future-config-raise) owned item whose area isn't unlocked yet still
+    // gets a shop row, falling through the area-unlock filter below.
+    const inUnlocked = C.PERMANENTS.filter(p => unlockedAreas.includes(p.area) || S.owned[p.id]);
     // Owned is never hidden; otherwise an item shows once its level is
     // reached (its area is unlocked by then — catalog invariant, tested).
     const visible = inUnlocked.filter(p => p.level <= lvNow || S.owned[p.id]);
@@ -580,7 +588,15 @@
       pr.appendChild(more);
     }
   }
-  $('btn-pet').addEventListener('click', () => { petReturnTo = 'screen-home'; renderPet(); show('screen-pet'); });
+  $('btn-pet').addEventListener('click', () => {
+    petReturnTo = 'screen-home';
+    renderPet();
+    // Reopening always starts at home; in-session scrolls persist only
+    // while the screen stays open (scrollLeft otherwise survives screen
+    // switches and the room can reopen on an empty, off-screen panel).
+    $('scene-strip').scrollLeft = 0;
+    show('screen-pet');
+  });
   $('pet-back').addEventListener('click', () => {
     const dest = petReturnTo;
     petReturnTo = 'screen-home';
