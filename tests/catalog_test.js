@@ -45,5 +45,52 @@ for (let lv = 2; lv <= 30; lv++) {
   check(p && p.price === price, `legacy item ${id} intact at ${price}`);
 });
 
+// --- Decor spots: every item has a spot, in its own area's map ---
+C.PERMANENTS.forEach(p => {
+  const spot = C.DECO_SPOTS[p.area] && C.DECO_SPOTS[p.area][p.id];
+  check(typeof spot === 'string' && spot.length > 0, `${p.id} has a spot in ${p.area}`);
+});
+Object.keys(C.DECO_SPOTS).forEach(areaId => {
+  check(AREA_IDS.includes(areaId), `spot map ${areaId} is a real area`);
+  Object.keys(C.DECO_SPOTS[areaId]).forEach(id => {
+    const item = C.PERMANENTS.find(p => p.id === id);
+    check(item && item.area === areaId, `spot ${areaId}/${id} matches the item's area`);
+  });
+});
+
+// --- Lattice geometry: non-main spots must be provably collision-free.
+// Panels are modeled at 320x240 with a 28px glyph box. Main's nine legacy
+// spots (rug/crug included) are grandfathered — verified via real rendered
+// rects in plan 2, and they overlap under this synthetic 28px model even
+// though they render fine in reality. Excluded here on purpose: adding
+// 'main' back into the loop below will fail the suite by design, not
+// because of a regression.
+function box(css) {
+  const W = 320, H = 240, G = 28;
+  const get = (re) => { const m = css.match(re); return m ? parseFloat(m[1]) : null; };
+  const lp = get(/left:\s*([\d.]+)%/), rp = get(/right:\s*([\d.]+)%/);
+  const tp = get(/top:\s*([\d.]+)%/), bp = get(/bottom:\s*([\d.]+)px/);
+  const x = lp !== null ? W * lp / 100 : W - (W * rp / 100) - G;
+  const y = tp !== null ? H * tp / 100 : H - bp - G;
+  return { x1: x, y1: y, x2: x + G, y2: y + G };
+}
+['nook', 'garden', 'pond', 'deck'].forEach(areaId => {
+  const entries = Object.entries(C.DECO_SPOTS[areaId]);
+  entries.forEach(([id, css]) => {
+    // A typo'd spot string (e.g. 'lfet:8%') makes get() return null, which
+    // box() silently coerces to 0 — a plausible-looking box that can pass
+    // the clearance check by luck. Fail loudly instead.
+    check(/left:|right:/.test(css), `${areaId}/${id} spot has an explicit left or right`);
+    check(/top:|bottom:/.test(css), `${areaId}/${id} spot has an explicit top or bottom`);
+  });
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      const a = box(entries[i][1]), b = box(entries[j][1]);
+      const clear = a.x2 + 4 <= b.x1 || b.x2 + 4 <= a.x1 || a.y2 + 4 <= b.y1 || b.y2 + 4 <= a.y1;
+      check(clear, `${areaId}: ${entries[i][0]} and ${entries[j][0]} keep 4px clearance`);
+    }
+  }
+});
+
 if (failures) { console.error(`${failures} failure(s)`); process.exit(1); }
 console.log(`catalog tests: all passed (${C.PERMANENTS.length} items)`);

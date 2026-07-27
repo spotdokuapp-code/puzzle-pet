@@ -137,9 +137,33 @@ body {
 /* Pet room */
 .scene {
   position: relative; height: 240px; border-radius: var(--radius); overflow: hidden;
-  background: linear-gradient(#fdeed9 0%, #fbf7ef 55%, #f0e3cf 55%, #ead9bf 100%);
   border: 1px solid var(--soft-line); margin-bottom: 14px;
 }
+.scene-strip {
+  display: flex; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.scene-strip::-webkit-scrollbar { display: none; }
+.area {
+  position: relative; flex: 0 0 92%; height: 100%; scroll-snap-align: start;
+}
+.area-main   { background: linear-gradient(#fdeed9 0%, #fbf7ef 55%, #f0e3cf 55%, #ead9bf 100%); }
+.area-nook   { background: linear-gradient(#f6e7d3 0%, #fdf6ea 55%, #eadfc9 55%, #e2d3b8 100%); }
+.area-garden { background: linear-gradient(#dceefb 0%, #eaf6e6 55%, #cfe5c4 55%, #b9d8ab 100%); }
+.area-pond   { background: linear-gradient(#d8ecf7 0%, #e6f3f8 55%, #bcd9e8 55%, #a5cade 100%); }
+.area-deck   { background: linear-gradient(#2e3457 0%, #4a4a76 60%, #6b5d8a 60%, #574b73 100%); }
+.area .area-label {
+  position: absolute; top: 8px; right: 10px; font-size: .7rem; font-weight: 700;
+  color: rgba(74,63,53,.55); background: rgba(255,255,255,.55);
+  padding: 2px 8px; border-radius: 999px;
+}
+.area-deck .area-label { color: rgba(255,255,255,.75); background: rgba(0,0,0,.25); }
+.area.sparkle::after {
+  content: '✨'; position: absolute; inset: 0; display: flex;
+  align-items: center; justify-content: center; font-size: 2rem;
+  animation: sparkle-fade 1.2s ease forwards; pointer-events: none;
+}
+@keyframes sparkle-fade { 0% { opacity: 0; transform: scale(.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(1.4); } }
 .scene .pet-sprite { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); }
 .scene .pet-sprite.bounce { animation: bounce .5s ease; }
 @keyframes bounce { 30% { transform: translateX(-50%) translateY(-14px) scale(1.04); } 60% { transform: translateX(-50%) translateY(0); } }
@@ -193,6 +217,7 @@ body {
 .overlay.show { display: flex; }
 .modal {
   background: var(--card); border-radius: 22px; padding: 22px; width: 100%; max-width: 360px;
+  max-height: 80vh; overflow-y: auto;
   text-align: center; animation: pop .2s ease;
 }
 @keyframes pop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -260,6 +285,10 @@ body {
 /* Shop gating */
 .item-btn.locked { opacity: .55; }
 .item-btn.locked .pr { color: var(--ink-soft); font-weight: 700; font-size: .72rem; }
+.shop-area-head {
+  flex: 1 1 100%; font-size: .78rem; font-weight: 800; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: .04em; margin: 6px 0 -2px;
+}
 .shop-more {
   flex: 1 1 100%; text-align: center; color: var(--ink-soft);
   font-size: .8rem; font-style: italic; padding: 6px 0 2px;

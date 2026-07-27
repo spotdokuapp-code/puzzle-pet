@@ -117,12 +117,19 @@
     return gained;
   }
 
-  // Main-area unlocks between two levels, as display strings. Plan 3 adds
-  // area lines here; plan 4 adds species lines.
+  // Everything a crossing unlocks: area lines first (the headline), then
+  // items the player doesn't already own. Species lines are plan 4.
   function unlocksFor(from, to) {
-    return C.PERMANENTS
-      .filter(p => p.area === 'main' && p.level > from && p.level <= to && !S.owned[p.id])
-      .map(p => `${p.emoji} ${p.name}`);
+    const lines = [];
+    let newArea = null;
+    C.AREAS.filter(a => a.id !== 'main' && a.level > from && a.level <= to).forEach(a => {
+      lines.push(`🏡 ${a.name}`);
+      newArea = a.id;
+    });
+    C.PERMANENTS
+      .filter(p => p.level > from && p.level <= to && !S.owned[p.id])
+      .forEach(p => lines.push(`${p.emoji} ${p.name}`));
+    return { lines, newArea };
   }
 
   function maybeLevelUpOverlay() {
@@ -131,13 +138,14 @@
     pendingLevelUp = null;
     $('levelup-title').textContent = `${S.pet.name} grew to Level ${p.to}!`;
     $('levelup-sprite').innerHTML = PPSprites.svg(S.pet.species, 'happy', 96);
-    const items = unlocksFor(p.from, p.to);
-    $('levelup-list').innerHTML = items.length
-      ? items.map(s => `<div class="unlock-row">${s}</div>`).join('')
+    const u = unlocksFor(p.from, p.to);
+    $('levelup-list').innerHTML = u.lines.length
+      ? u.lines.map(s => `<div class="unlock-row">${s}</div>`).join('')
       : '<div class="unlock-row">💛 Growing stronger together</div>';
     const cta = $('levelup-cta');
-    cta.textContent = items.length ? 'See the shop' : 'Continue';
-    cta.dataset.dest = items.length ? 'shop' : 'stay';
+    cta.textContent = u.newArea ? 'Visit the room' : (u.lines.length ? 'See the shop' : 'Continue');
+    cta.dataset.dest = u.newArea ? 'room' : (u.lines.length ? 'shop' : 'stay');
+    cta.dataset.area = u.newArea || '';
     overlay('overlay-levelup', true);
     const sp = $('levelup-sprite');
     sp.classList.remove('bounce'); void sp.offsetWidth; sp.classList.add('bounce');
@@ -145,7 +153,22 @@
 
   $('levelup-cta').addEventListener('click', () => {
     overlay('overlay-levelup', false);
-    if ($('levelup-cta').dataset.dest === 'shop') { renderPet(); show('screen-pet'); }
+    const cta = $('levelup-cta');
+    if (cta.dataset.dest === 'stay') return;
+    petReturnTo = document.querySelector('.screen.active').id;
+    renderPet();
+    show('screen-pet');
+    if (cta.dataset.dest === 'room' && cta.dataset.area) {
+      const panel = $(`area-${cta.dataset.area}`);
+      if (panel) {
+        // block: 'nearest' keeps the scroll inside the strip — without it,
+        // 'start' (the default) scrolls the whole DOCUMENT too, and the
+        // back button can end up above the viewport.
+        panel.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+        panel.classList.add('sparkle');
+        setTimeout(() => panel.classList.remove('sparkle'), 1300);
+      }
+    }
   });
 
   function touch() {
@@ -409,17 +432,6 @@
   $('cal-next').addEventListener('click', () => { calM++; if (calM > 11) { calM = 0; calY++; } renderCalendar(); });
 
   // ---------- pet room ----------
-  const DECO_SPOTS = {
-    ball:   'left:12%; bottom:12px;',
-    plant:  'right:10%; bottom:14px;',
-    lamp:   'left:7%;  top:34%;',
-    rug:    'right:26%; bottom:6px;',
-    poster: 'right:8%; top:12%;',
-    bowl:   'left:24%; top:56%;',
-    shelf:  'right:6%; top:30%;',
-    tent:   'left:22%; bottom:8px;',
-    crug:   'right:18%; bottom:2px;'
-  };
   function renderLevel() {
     const lv = PPLevel.displayLevel(S.pet);
     const info = PPLevel.levelForXp(S.pet.xp);
@@ -438,16 +450,37 @@
   }
   function renderPet(bounce) {
     $('chip-coins-pet').textContent = `🪙 ${S.coins}`;
-    const scene = $('scene');
-    scene.querySelectorAll('.deco').forEach(e => e.remove());
+    const lvNow = PPLevel.displayLevel(S.pet);
+    const strip = $('scene-strip');
+    // Build one panel per UNLOCKED area; locked areas do not exist in the
+    // DOM at all — no doors, no silhouettes. Main's panel is static.
+    // scene-strip's scrollLeft survives this remove/re-append only because
+    // no layout flush happens in between — do not insert measurements
+    // (getBoundingClientRect/offsetWidth) here, or the scroll position resets.
+    strip.querySelectorAll('.area:not(.area-main)').forEach(e => e.remove());
+    C.AREAS.filter(a => a.id !== 'main' && a.level <= lvNow).forEach(a => {
+      const panel = document.createElement('div');
+      panel.className = `area area-${a.id}`;
+      panel.id = `area-${a.id}`;
+      const label = document.createElement('div');
+      label.className = 'area-label';
+      label.textContent = a.name;
+      panel.appendChild(label);
+      strip.appendChild(panel);
+    });
+    strip.querySelectorAll('.deco').forEach(e => e.remove());
     Object.keys(S.owned).forEach(id => {
       const item = C.PERMANENTS.find(p => p.id === id);
       if (!item) return;
+      // Owned is never hidden: if the item's panel is missing (corrupt
+      // save), it falls back to the main panel rather than vanishing.
+      const host = $(`area-${item.area}`) || $('area-main');
+      const spots = C.DECO_SPOTS[item.area] || {};
       const el = document.createElement('div');
       el.className = 'deco';
-      el.style.cssText = DECO_SPOTS[id] || 'left:20%; bottom:10px;';
+      el.style.cssText = spots[id] || 'left:20%; bottom:10px;';
       el.textContent = item.emoji;
-      scene.appendChild(el);
+      host.appendChild(el);
     });
     const spriteEl = $('pet-sprite');
     spriteEl.innerHTML = PPSprites.svg(S.pet.species, mood(), 110);
@@ -461,7 +494,7 @@
     };
     if (bounce) { spriteEl.classList.remove('bounce'); void spriteEl.offsetWidth; spriteEl.classList.add('bounce'); }
     $('pet-speech').textContent = moodText();
-    $('pet-title').textContent = `${S.pet.name} the ${S.pet.species}`;
+    $('pet-title').textContent = `${S.pet.name} the ${S.pet.species} · Lv ${lvNow}`;
     renderLevel();
     renderEnergy('pet-energy-fill', 'pet-energy-label');
 
@@ -487,45 +520,59 @@
 
     const pr = $('permanents-row');
     pr.innerHTML = '';
-    const lvNow = PPLevel.displayLevel(S.pet);
-    const mains = C.PERMANENTS.filter(p => p.area === 'main');
-    // Owned items are never hidden, whatever their level — a migrated save
-    // may own above its backfilled level. Unowned items show at or below
-    // the current level; the single next locked main tier is teased; all
-    // deeper content collapses to one line (no item-by-item teasing).
-    const visible = mains.filter(p => p.level <= lvNow || S.owned[p.id]);
-    const nextLocked = mains.filter(p => p.level > lvNow && !S.owned[p.id]);
+    const unlockedAreas = C.AREAS.filter(a => a.level <= lvNow).map(a => a.id);
+    // Owned is never hidden — in the shop or the room: a (corrupt-save or
+    // future-config-raise) owned item whose area isn't unlocked yet still
+    // gets a shop row, falling through the area-unlock filter below.
+    const inUnlocked = C.PERMANENTS.filter(p => unlockedAreas.includes(p.area) || S.owned[p.id]);
+    // Owned is never hidden; otherwise an item shows once its level is
+    // reached (its area is unlocked by then — catalog invariant, tested).
+    const visible = inUnlocked.filter(p => p.level <= lvNow || S.owned[p.id]);
+    const nextLocked = inUnlocked.filter(p => p.level > lvNow && !S.owned[p.id]);
     const nextLevel = nextLocked.length ? nextLocked[0].level : null;
     const teaseInRange = nextLevel !== null && (nextLevel - lvNow) <= C.SHOP_TEASE_RANGE;
     const teased = teaseInRange ? nextLocked.filter(p => p.level === nextLevel) : [];
+    const grouping = unlockedAreas.length >= 2;
 
-    visible.forEach(item => {
+    const renderRow = (item, locked) => {
       const owned = !!S.owned[item.id];
       const b = document.createElement('button');
-      b.className = 'item-btn' + (owned ? ' owned' : '');
       b.id = `shop-${item.id}`;
-      b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
-        `<span class="pr">${owned ? 'in room ✓' : item.price + ' 🪙'}</span>`;
-      b.disabled = owned || S.coins < item.price;
-      if (!owned) b.addEventListener('click', () => {
-        S.coins -= item.price;
-        S.owned[item.id] = true;
-        touch();
-        log('buy_permanent', { item: item.id, cost: item.price });
-        toast(`${item.name} added to the room! ${item.emoji}`);
-        renderPet(true);
-      });
+      if (locked) {
+        b.className = 'item-btn locked';
+        b.disabled = true;
+        b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
+          `<span class="pr">Unlocks at Lv ${item.level} ✨</span>`;
+      } else {
+        b.className = 'item-btn' + (owned ? ' owned' : '');
+        b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
+          `<span class="pr">${owned ? 'in room ✓' : item.price + ' 🪙'}</span>`;
+        b.disabled = owned || S.coins < item.price;
+        if (!owned) b.addEventListener('click', () => {
+          S.coins -= item.price;
+          S.owned[item.id] = true;
+          touch();
+          log('buy_permanent', { item: item.id, cost: item.price });
+          toast(`${item.name} added to the room! ${item.emoji}`);
+          renderPet(true);
+        });
+      }
       pr.appendChild(b);
-    });
+    };
 
-    teased.forEach(item => {
-      const b = document.createElement('button');
-      b.className = 'item-btn locked';
-      b.id = `shop-${item.id}`;
-      b.disabled = true;
-      b.innerHTML = `<span class="em">${item.emoji}</span><span class="nm">${item.name}</span>` +
-        `<span class="pr">Unlocks at Lv ${item.level} ✨</span>`;
-      pr.appendChild(b);
+    C.AREAS.forEach(a => {
+      const rows = [
+        ...visible.filter(p => p.area === a.id).map(p => [p, false]),
+        ...teased.filter(p => p.area === a.id).map(p => [p, true])
+      ];
+      if (!rows.length) return;
+      if (grouping) {
+        const head = document.createElement('div');
+        head.className = 'shop-area-head';
+        head.textContent = a.name;
+        pr.appendChild(head);
+      }
+      rows.forEach(([item, locked]) => renderRow(item, locked));
     });
 
     // Anything beyond the teased tier — deeper main levels and every unbuilt
@@ -541,8 +588,21 @@
       pr.appendChild(more);
     }
   }
-  $('btn-pet').addEventListener('click', () => { renderPet(); show('screen-pet'); });
-  $('pet-back').addEventListener('click', () => { renderHome(); show('screen-home'); });
+  $('btn-pet').addEventListener('click', () => {
+    petReturnTo = 'screen-home';
+    renderPet();
+    // Reopening always starts at home; in-session scrolls persist only
+    // while the screen stays open (scrollLeft otherwise survives screen
+    // switches and the room can reopen on an empty, off-screen panel).
+    $('scene-strip').scrollLeft = 0;
+    show('screen-pet');
+  });
+  $('pet-back').addEventListener('click', () => {
+    const dest = petReturnTo;
+    petReturnTo = 'screen-home';
+    if (dest === 'screen-calendar') renderCalendar(); else renderHome();
+    show(dest);
+  });
 
   // ---------- onboarding: welcome → meet → name → arrive ----------
   // Species is written once at the "meet" beat and never again. Tapping a
@@ -553,6 +613,9 @@
   // Queued level-up crossing, shown after the win overlay's Continue and any
   // interstitial (never stacked). In-memory only — see awardXp.
   let pendingLevelUp = null;
+  // Where 'pet-back' should return to. Defaults home; the level-up CTA and
+  // btn-pet set it just before navigating into the pet screen.
+  let petReturnTo = 'screen-home';
 
   function onbStep(id) {
     document.querySelectorAll('.onboard-step').forEach(s => s.classList.remove('active'));

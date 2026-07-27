@@ -355,7 +355,24 @@ test('the shop gates by level: visible tier, one teased tier, quiet collapse', a
   await expect(page.locator('#shop-bowl .pr')).toHaveText('in room ✓');
 });
 
-test('level-up overlay with no main unlocks shows a quiet fallback and does not navigate', async ({ page }) => {
+test('an owned item in a still-locked area keeps its shop row', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-dog');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  // koi (pond, unlocks at Lv 20) owned at Lv 1 — a corrupt-save or
+  // future-config-raise scenario. Owned is never hidden: it must still
+  // show a shop row, not vanish because its area isn't unlocked yet.
+  await page.evaluate(() => { window.PP.state().owned.koi = true; });
+  await page.click('#btn-pet');
+  await expect(page.locator('#shop-koi')).toHaveCount(1);
+  await expect(page.locator('#shop-koi .pr')).toHaveText('in room ✓');
+});
+
+test('crossing an area level headlines the area and visits the room', async ({ page }) => {
   await page.goto('/');
   await page.click('#onb-welcome-go');
   await page.click('#species-cat');
@@ -363,10 +380,9 @@ test('level-up overlay with no main unlocks shows a quiet fallback and does not 
   await page.click('#onb-name-go');
   await page.click('#onb-arrive-go');
 
-  // Sit one easy-solve below the L4→L5 threshold. L5 has no main-area
-  // unlocks (cushion/lights at level 5 are both 'nook'), so crossing it is
-  // the common case: the overlay must fall back to the quiet placeholder
-  // row instead of rendering an empty list.
+  // Sit one easy-solve below the L4→L5 threshold. L5 unlocks the nook area
+  // (plus its two level-5 items): the overlay must headline the area, not
+  // just list items, and the CTA must offer to visit the room.
   const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
   const l5 = await page.evaluate(() => window.PPConfig.LEVEL_XP[3]);
   await page.evaluate(xp => window.PP._grantXp(xp), l5 - perEasy);
@@ -377,9 +393,106 @@ test('level-up overlay with no main unlocks shows a quiet fallback and does not 
 
   await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
   await expect(page.locator('#levelup-title')).toContainText('Level 5');
+  await expect(page.locator('#levelup-list')).toContainText('🏡 Window nook');
+  await expect(page.locator('#levelup-list')).toContainText('Window cushion');
+  await expect(page.locator('#levelup-list')).toContainText('String lights');
+  await expect(page.locator('#levelup-cta')).toHaveText('Visit the room');
+  await page.click('#levelup-cta');
+  await expect(page.locator('#overlay-levelup')).not.toHaveClass(/show/);
+  await expect(page.locator('#screen-pet')).toHaveClass(/active/);
+  await expect(page.locator('#area-nook')).toHaveCount(1);
+
+  // The CTA actually scrolled the strip to the new area (smooth scroll —
+  // poll until the animation lands rather than asserting immediately).
+  await expect.poll(() =>
+    page.evaluate(() => document.getElementById('scene-strip').scrollLeft)
+  ).toBeGreaterThan(0);
+
+  // pet-back returns to wherever the room was entered from — here, home.
+  await page.click('#pet-back');
+  await expect(page.locator('#screen-home')).toHaveClass(/active/);
+});
+
+test('a crossing with nothing new falls back warmly', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-cat');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  // Pre-own the L6 unlock (toychest is the only thing that unlocks at L6,
+  // and the nook area is already open by then), so this crossing is
+  // genuinely empty — the overlay must fall back to the quiet placeholder
+  // row instead of rendering nothing.
+  await page.evaluate(() => { const s = window.PP.state(); s.owned.toychest = true; });
+
+  const perEasy = await page.evaluate(() => window.PPConfig.XP_PAYOUTS[0]);
+  const l6 = await page.evaluate(() => window.PPConfig.LEVEL_XP[4]);
+  await page.evaluate(xp => window.PP._grantXp(xp), l6 - perEasy);
+
+  await page.click('#slot-0');
+  await autosolve(page);
+  await continueWin(page);
+
+  await expect(page.locator('#overlay-levelup')).toHaveClass(/show/);
+  await expect(page.locator('#levelup-title')).toContainText('Level 6');
   await expect(page.locator('#levelup-list')).toContainText('Growing stronger together');
   await expect(page.locator('#levelup-cta')).toHaveText('Continue');
   await page.click('#levelup-cta');
   await expect(page.locator('#overlay-levelup')).not.toHaveClass(/show/);
   await expect(page.locator('#screen-home')).toHaveClass(/active/);   // dest 'stay': no navigation
+});
+
+test('areas unlock as panels, decor lands in its area, shop groups', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-cat');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  // Lv 1: only the main panel exists — locked areas are absent, not teased.
+  await page.click('#btn-pet');
+  await expect(page.locator('.area')).toHaveCount(1);
+  await expect(page.locator('#area-nook')).toHaveCount(0);
+  await expect(page.locator('.shop-area-head')).toHaveCount(0);   // one area → no headers
+
+  // Reach Lv 5: the nook panel appears with its label; shop grows headers.
+  await page.evaluate(() => window.PP._grantXp(window.PPConfig.LEVEL_XP[3]));  // 430 → Lv 5
+  await page.click('#pet-back');
+  await page.click('#btn-pet');
+  await expect(page.locator('#area-nook')).toHaveCount(1);
+  await expect(page.locator('#area-nook .area-label')).toHaveText('Window nook');
+  await expect(page.locator('#area-garden')).toHaveCount(0);      // still locked, still absent
+  await expect(page.locator('.shop-area-head')).toHaveCount(2);   // Home + Window nook
+
+  // Buy a nook item: the decor lands in the nook panel, not main.
+  await page.evaluate(() => window.PP._grant(400));
+  await page.click('#pet-back');
+  await page.click('#btn-pet');
+  await page.click('#shop-cushion');
+  await expect(page.locator('#area-nook .deco')).toHaveCount(1);
+  await expect(page.locator('#area-main .deco')).toHaveCount(0);
+
+  // The pet-room title carries the level.
+  await expect(page.locator('#pet-title')).toContainText('· Lv 5');
+});
+
+test('late game: every area and every catalog item is in the room by Lv 30', async ({ page }) => {
+  await page.goto('/');
+  await page.click('#onb-welcome-go');
+  await page.click('#species-cat');
+  await page.click('#onb-choose-go');
+  await page.click('#onb-name-go');
+  await page.click('#onb-arrive-go');
+
+  await page.evaluate(() => window.PP._grantXp(window.PPConfig.LEVEL_XP[28]));  // L30
+  await page.click('#btn-pet');
+
+  await expect(page.locator('.area')).toHaveCount(5);
+  await expect(page.locator('.shop-area-head')).toHaveCount(5);
+  await expect(page.locator('#permanents-row .item-btn')).toHaveCount(37);
+  await expect(page.locator('#shop-more')).toHaveCount(0);
+  await expect(page.locator('#pet-title')).toContainText('· Lv 30');
 });
