@@ -60,8 +60,11 @@ Object.keys(C.DECO_SPOTS).forEach(areaId => {
 
 // --- Lattice geometry: non-main spots must be provably collision-free.
 // Panels are modeled at 320x240 with a 28px glyph box. Main's nine legacy
-// spots are grandfathered (verified via real rendered rects in plan 2)
-// and excluded here; every NEW area must keep >= 4px clearance.
+// spots (rug/crug included) are grandfathered — verified via real rendered
+// rects in plan 2, and they overlap under this synthetic 28px model even
+// though they render fine in reality. Excluded here on purpose: adding
+// 'main' back into the loop below will fail the suite by design, not
+// because of a regression.
 function box(css) {
   const W = 320, H = 240, G = 28;
   const get = (re) => { const m = css.match(re); return m ? parseFloat(m[1]) : null; };
@@ -73,6 +76,13 @@ function box(css) {
 }
 ['nook', 'garden', 'pond', 'deck'].forEach(areaId => {
   const entries = Object.entries(C.DECO_SPOTS[areaId]);
+  entries.forEach(([id, css]) => {
+    // A typo'd spot string (e.g. 'lfet:8%') makes get() return null, which
+    // box() silently coerces to 0 — a plausible-looking box that can pass
+    // the clearance check by luck. Fail loudly instead.
+    check(/left:|right:/.test(css), `${areaId}/${id} spot has an explicit left or right`);
+    check(/top:|bottom:/.test(css), `${areaId}/${id} spot has an explicit top or bottom`);
+  });
   for (let i = 0; i < entries.length; i++) {
     for (let j = i + 1; j < entries.length; j++) {
       const a = box(entries[i][1]), b = box(entries[j][1]);
